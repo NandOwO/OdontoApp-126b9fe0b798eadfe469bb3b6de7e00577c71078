@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODONTOAPP - Iniciar Sesión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f5ff;
+            /* Tailwind bg-blue-50 approx */
+        }
+
+        .tab-button.active {
+            background-color: white;
+            color: #1e40af;
+            /* Tailwind blue-800 */
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .tab-button {
+            transition: all 0.2s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="antialiased text-slate-800 flex items-center justify-center p-4 min-h-screen">
+
+    <div class="w-full max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+
+        <div class="hidden lg:block space-y-6">
+            <div class="text-center space-y-4">
+                <div class="flex items-center justify-center space-x-3 mb-8">
+                    <div class="bg-blue-600 p-3 rounded-xl">
+                        <img th:src="@{/adminlte/dist/img/AdminLTELogo.png}" alt="Logo" class="h-8 w-8" />
+                    </div>
+                    <div>
+                        <h1 class="text-4xl font-bold text-blue-900">ODONTOAPP</h1>
+                        <p class="text-blue-600 text-lg">Sistema de Gestión Dental</p>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl overflow-hidden shadow-2xl">
+                    <img src="https://images.unsplash.com/photo-1642844819197-5f5f21b89ff8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkZW50YWwlMjBjbGluaWMlMjBtb2Rlcm4lMjBpbnRlcmlvcnxlbnwxfHx8fDE3NTY3NTY5MDV8MA&ixlib=rb-4.1.0&q=80&w=1080"
+                        alt="Clínica dental moderna" class="w-full h-96 object-cover" />
+                </div>
+
+                <div class="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg">
+                    <h3 class="text-xl font-semibold text-blue-900 mb-4">Gestión Integral de tu Clínica</h3>
+                    <ul class="text-blue-700 space-y-2 text-left pl-4">
+                        <li class="flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            <span>Gestión segura de pacientes</span>
+                        </li>
+                        <li class="flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            <span>Control de citas y calendario</span>
+                        </li>
+                        <li class="flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            <span>Facturación y punto de venta</span>
+                        </li>
+                        <li class="flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            <span>Gestión de inventario</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full max-w-md mx-auto">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 space-y-6 border border-slate-200">
+
+                <div class="text-left">
+                    <h2 class="text-2xl font-bold text-slate-900">Iniciar Sesión</h2>
+                    <p class="text-slate-500 mt-1">Accede a tu cuenta</p>
+                </div>
+
+                <!-- ✅ Mensajes de error mejorados -->
+                <div th:if="${param.error}" class="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+                    <span th:if="${param.reason == 'wrongPortal'}">
+                        <strong>❌ Acceso denegado:</strong> Este usuario no puede ingresar por esta sección.
+                        <span th:if="${param.loginType == 'paciente'}">Por favor, use el login de "Personal Clínica".</span>
+                        <span th:if="${param.loginType == 'personal'}">Por favor, use el login de "Pacientes".</span>
+                    </span>
+                    <span th:unless="${param.reason == 'wrongPortal'}">
+                        <!-- Mensaje personalizado del handler de autenticación -->
+                        <span th:if="${session.SPRING_SECURITY_LAST_EXCEPTION_MESSAGE}" th:text="${session.SPRING_SECURITY_LAST_EXCEPTION_MESSAGE}"></span>
+                        <span th:unless="${session.SPRING_SECURITY_LAST_EXCEPTION_MESSAGE}">
+                            <strong>❌ Credenciales incorrectas:</strong> Verifica tu email y contraseña.<br>
+                            <small>💡 Asegúrate de estar en la sección correcta: "Personal Clínica" o "Pacientes"</small>
+                        </span>
+                    </span>
+                </div>
+                <div th:if="${param.logout}" class="p-3 bg-blue-100 text-blue-700 rounded-lg text-sm">
+                    Has cerrado sesión correctamente.
+                </div>
+                <div th:if="${success}" class="p-3 bg-green-100 text-green-700 rounded-lg text-sm">
+                    <span th:text="${success}"></span>
+                </div>
+
+                <div class="bg-slate-100 p-1 rounded-lg grid grid-cols-2 gap-1">
+                    <button id="tab-personal"
+                        class="tab-button active w-full py-2 px-4 rounded-md text-sm font-semibold">
+                        <span class="inline-block align-middle">👤</span> Personal Clínica
+                    </button>
+                    <button id="tab-pacientes"
+                        class="tab-button w-full py-2 px-4 rounded-md text-sm font-semibold text-slate-600">
+                        <span class="inline-block align-middle">😊</span> Pacientes
+                    </button>
+                </div>
+
+                <div>
+                    <!-- ✅ LOGIN PARA PERSONAL CLÍNICA -->
+                    <div id="content-personal">
+                        <form th:action="@{/login}" method="post" class="space-y-4 mt-4">
+                            <!-- Campo oculto para identificar tipo de login -->
+                            <input type="hidden" name="loginType" value="personal">
+                            <div>
+                                <label for="username-personal" class="text-sm font-medium text-slate-700">Email</label>
+                                <input id="username-personal" name="username" type="email" placeholder="tu@email.com"
+                                    required
+                                    class="mt-1 w-full h-11 px-4 py-2 rounded-md border border-slate-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
+                            </div>
+                            <div>
+                                <label for="password-personal"
+                                    class="text-sm font-medium text-slate-700">Contraseña</label>
+                                <input id="password-personal" name="password" type="password" placeholder="••••••••"
+                                    required
+                                    class="mt-1 w-full h-11 px-4 py-2 rounded-md border border-slate-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
+                            </div>
+                            <button type="submit"
+                                class="w-full h-11 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition-colors shadow-sm">
+                                Iniciar Sesión
+                            </button>
+                        </form>
+                        <p class="text-center text-sm mt-4">
+                            <a th:href="@{/recuperar-password}" class="font-medium text-blue-600 hover:underline">¿Has olvidado tu contraseña?</a>
+                        </p>
+                    </div>
+
+                    <!-- ✅ LOGIN PARA PACIENTES -->
+                    <div id="content-pacientes" class="hidden">
+                        <form th:action="@{/login}" method="post" class="space-y-4 mt-4">
+                            <!-- Campo oculto para identificar tipo de login -->
+                            <input type="hidden" name="loginType" value="paciente">
+                            <div>
+                                <label for="username-paciente" class="text-sm font-medium text-slate-700">Email</label>
+                                <input id="username-paciente" name="username" type="email"
+                                    placeholder="Ingresa tu email registrado" required
+                                    class="mt-1 w-full h-11 px-4 py-2 rounded-md border border-slate-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
+                            </div>
+                            <div>
+                                <label for="password-paciente"
+                                    class="text-sm font-medium text-slate-700">Contraseña</label>
+                                <input id="password-paciente" name="password" type="password" placeholder="••••••••"
+                                    required
+                                    class="mt-1 w-full h-11 px-4 py-2 rounded-md border border-slate-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
+                            </div>
+                            <button type="submit"
+                                class="w-full h-11 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition-colors shadow-sm">
+                                Ingresar al Portal
+                            </button>
+                        </form>
+                        <p class="text-center text-sm mt-4">
+                            <a th:href="@{/recuperar-password}" class="font-medium text-blue-600 hover:underline">¿Has olvidado tu contraseña?</a>
+                        </p>
+                        <p class="text-center text-sm mt-2">
+                            <a th:href="@{/registro}" class="font-medium text-blue-600 hover:underline">¿No tienes
+                                cuenta? Regístrate aquí</a>
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <script>
+        const tabPersonal = document.getElementById('tab-personal');
+        const tabPacientes = document.getElementById('tab-pacientes');
+        const contentPersonal = document.getElementById('content-personal');
+        const contentPacientes = document.getElementById('content-pacientes');
+
+        function showPersonalTab() {
+            // Estilos botones
+            tabPersonal.classList.add('active');
+            tabPersonal.classList.remove('bg-slate-100', 'text-slate-600');
+            tabPacientes.classList.remove('active');
+            tabPacientes.classList.add('bg-slate-100', 'text-slate-600');
+            // Contenido
+            contentPersonal.classList.remove('hidden');
+            contentPacientes.classList.add('hidden');
+        }
+
+        function showPacientesTab() {
+            // Estilos botones
+            tabPacientes.classList.add('active');
+            tabPacientes.classList.remove('bg-slate-100', 'text-slate-600');
+            tabPersonal.classList.remove('active');
+            tabPersonal.classList.add('bg-slate-100', 'text-slate-600');
+            // Contenido
+            contentPacientes.classList.remove('hidden');
+            contentPersonal.classList.add('hidden');
+        }
+
+        tabPersonal.addEventListener('click', showPersonalTab);
+        tabPacientes.addEventListener('click', showPacientesTab);
+
+        // ✅ Mostrar pestaña correcta si hay error
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error')) {
+            const loginType = urlParams.get('loginType');
+            if (loginType === 'paciente') {
+                showPacientesTab();
+            } else if (loginType === 'personal') {
+                showPersonalTab();
+            } else {
+                showPersonalTab(); // Por defecto
+            }
+        } else if (urlParams.get('fromRegistro') === 'true') {
+            // Si viene del registro, mostrar tab de pacientes
+            showPacientesTab();
+        } else {
+            showPersonalTab(); // Por defecto muestra personal
+        }
+
+    </script>
+
+</body>
+
+</html>

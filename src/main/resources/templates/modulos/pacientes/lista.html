@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+    th:replace="~{layout/base :: layout(titulo='Gestión de Pacientes', contenido=~{::#contenido-principal})}">
+
+<body>
+    <div id="contenido-principal">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1>Gestión de Pacientes</h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <a th:href="@{/pacientes/nuevo}" class="btn btn-primary float-sm-right"
+                            sec:authorize="hasAuthority('CREAR_PACIENTES')">
+                            <i class="fas fa-user-plus"></i> Nuevo Paciente
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section class="content">
+            <div class="container-fluid">
+                <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                    <strong><i class="icon fas fa-check-circle"></i> Éxito:</strong>
+                    <span th:text="${success}"></span>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong><i class="icon fas fa-ban"></i> Error:</strong>
+                    <span th:text="${error}"></span>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Listado de Pacientes</h3>
+                        <div class="card-tools">
+                            <form th:action="@{/pacientes}" method="get" class="form-inline" id="formBuscarPaciente">
+                                <input type="text" name="keyword" id="buscarPacienteInput" class="form-control form-control-sm"
+                                    placeholder="Buscar Doc., Nombre o Email..." th:value="${keyword}"
+                                    style="width: 300px;">
+                                <button type="submit" class="btn btn-sm btn-default ml-2"><i
+                                        class="fas fa-search"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-bordered table-hover table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Documento</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Email</th>
+                                    <th>Teléfono</th>
+                                    <th style="width: 160px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="paciente : ${paginaPacientes.content}">
+                                    <td>
+                                        <b th:text="${paciente.numeroDocumento}"></b><br>
+                                        <small class="text-muted"
+                                            th:text="${'(' + paciente.tipoDocumento.codigo + ')'}"></small>
+                                    </td>
+                                    <td th:text="${paciente.nombreCompleto}"></td>
+                                    <td th:text="${paciente.email}"></td>
+                                    <td th:text="${paciente.telefono}"></td>
+                                    <td>
+                                        <a th:href="@{/pacientes/historial/{id}(id=${paciente.id})}"
+                                            class="btn btn-sm btn-info" title="Ver Detalle Completo del Paciente"
+                                            sec:authorize="hasAnyAuthority('VER_DETALLE_PACIENTES', 'ADMIN')">
+                                            <i class="fas fa-file-medical"></i>
+                                        </a>
+                                        <a th:href="@{/pacientes/editar/{id}(id=${paciente.id})}"
+                                            class="btn btn-sm btn-warning" title="Editar Datos del Paciente"
+                                            sec:authorize="hasAnyAuthority('EDITAR_PACIENTES', 'ADMIN')">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a th:href="@{/pacientes/eliminar/{id}(id=${paciente.id})}"
+                                            class="btn btn-sm btn-danger btn-eliminar-paciente" title="Eliminar Paciente (Lógico)"
+                                            th:data-nombre="${paciente.nombreCompleto}"
+                                            sec:authorize="hasAnyAuthority('ELIMINAR_PACIENTES', 'ADMIN')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr th:if="${paginaPacientes.empty}">
+                                    <td colspan="5" class="text-center text-muted">No se encontraron pacientes.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer clearfix" th:if="${paginaPacientes.totalPages > 0}">
+                        <div class="float-left">
+                            <small class="text-muted">
+                                Mostrando <span th:text="${paginaPacientes.numberOfElements}"></span> de
+                                <span th:text="${paginaPacientes.totalElements}"></span> pacientes
+                                (Página <span th:text="${paginaPacientes.number + 1}"></span> de
+                                <span th:text="${paginaPacientes.totalPages}"></span>)
+                            </small>
+                        </div>
+                        <ul class="pagination pagination-sm m-0 float-right" th:if="${paginaPacientes.totalPages > 1}">
+                            <!-- Primera página -->
+                            <li class="page-item" th:classappend="${paginaPacientes.first} ? 'disabled'">
+                                <a class="page-link" th:href="@{/pacientes(page=0, keyword=${keyword})}" aria-label="Primera">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <!-- Página anterior -->
+                            <li class="page-item" th:classappend="${paginaPacientes.first} ? 'disabled'">
+                                <a class="page-link" th:href="@{/pacientes(page=${paginaPacientes.number - 1}, keyword=${keyword})}" aria-label="Anterior">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            <!-- Números de página -->
+                            <li class="page-item" th:each="i : ${#numbers.sequence(0, paginaPacientes.totalPages - 1)}"
+                                th:if="${i >= paginaPacientes.number - 2 && i <= paginaPacientes.number + 2}"
+                                th:classappend="${i == paginaPacientes.number} ? 'active'">
+                                <a class="page-link" th:href="@{/pacientes(page=${i}, keyword=${keyword})}" th:text="${i + 1}"></a>
+                            </li>
+                            <!-- Página siguiente -->
+                            <li class="page-item" th:classappend="${paginaPacientes.last} ? 'disabled'">
+                                <a class="page-link" th:href="@{/pacientes(page=${paginaPacientes.number + 1}, keyword=${keyword})}" aria-label="Siguiente">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <!-- Última página -->
+                            <li class="page-item" th:classappend="${paginaPacientes.last} ? 'disabled'">
+                                <a class="page-link" th:href="@{/pacientes(page=${paginaPacientes.totalPages - 1}, keyword=${keyword})}" aria-label="Última">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+        // Confirmación de eliminación de paciente con SweetAlert2
+        $(document).on('click', '.btn-eliminar-paciente', function(e) {
+            e.preventDefault();
+            const url = $(this).attr('href');
+            const nombre = $(this).data('nombre');
+
+            Swal.fire({
+                title: '¿Eliminar paciente?',
+                html: `¿Está seguro de que desea eliminar al paciente<br><strong>${nombre}</strong>?<br><br><small class="text-muted">Su cuenta asociada también se desactivará.</small>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-trash"></i> Sí, eliminar',
+                cancelButtonText: '<i class="fas fa-times"></i> Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = url;
+                }
+            });
+        });
+
+        // Búsqueda en tiempo real para pacientes
+        let timeoutBusqueda = null;
+        $('#buscarPacienteInput').on('input', function() {
+            // Limpiar timeout anterior
+            clearTimeout(timeoutBusqueda);
+
+            // Esperar 500ms después de que el usuario deje de escribir
+            timeoutBusqueda = setTimeout(function() {
+                $('#formBuscarPaciente').submit();
+            }, 500);
+        });
+        }); // Fin de $(document).ready()
+    </script>
+</body>
+
+</html>

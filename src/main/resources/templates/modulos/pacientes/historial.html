@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+    th:replace="~{layout/base :: layout(titulo='Historial Clínico', contenido=~{::#contenido-principal})}">
+
+<body>
+    <div id="contenido-principal">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1><i class="fas fa-notes-medical mr-2"></i>Historial Clínico</h1>
+                        <p class="text-muted" th:text="${paciente.nombreCompleto}"></p>
+                    </div>
+                    <div class="col-sm-6">
+                        <a th:href="@{/pacientes}" class="btn btn-outline-secondary float-sm-right">
+                            <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <!-- Información del Paciente -->
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card card-primary card-outline">
+                            <div class="card-body box-profile">
+                                <div class="text-center">
+                                    <div class="user-avatar bg-primary mx-auto" style="width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white; font-weight: bold;">
+                                        <span th:text="${#strings.substring(paciente.nombreCompleto, 0, 1)}"></span>
+                                    </div>
+                                </div>
+
+                                <h3 class="profile-username text-center mt-3" th:text="${paciente.nombreCompleto}"></h3>
+
+                                <ul class="list-group list-group-unbordered mb-3">
+                                    <li class="list-group-item">
+                                        <b><i class="fas fa-id-card mr-2"></i>Documento</b>
+                                        <span class="float-right" th:text="${paciente.tipoDocumento.codigo + ' ' + paciente.numeroDocumento}"></span>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <b><i class="fas fa-envelope mr-2"></i>Email</b>
+                                        <span class="float-right" th:text="${paciente.email}"></span>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <b><i class="fas fa-phone mr-2"></i>Teléfono</b>
+                                        <span class="float-right" th:text="${paciente.telefono ?: '-'}"></span>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <b><i class="fas fa-birthday-cake mr-2"></i>Nacimiento</b>
+                                        <span class="float-right" th:if="${paciente.fechaNacimiento}"
+                                              th:text="${#temporals.format(paciente.fechaNacimiento, 'dd/MM/yyyy')}"></span>
+                                        <span class="float-right text-muted" th:unless="${paciente.fechaNacimiento}">-</span>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <b><i class="fas fa-map-marker-alt mr-2"></i>Dirección</b>
+                                        <div class="mt-1 text-muted small" th:text="${paciente.direccion ?: 'No especificada'}"></div>
+                                    </li>
+                                </ul>
+
+                                <a th:href="@{/pacientes/editar/{id}(id=${paciente.id})}"
+                                   class="btn btn-primary btn-block"
+                                   sec:authorize="hasAuthority('EDITAR_PACIENTES')">
+                                    <i class="fas fa-edit mr-2"></i><b>Editar Datos</b>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Alergias y Antecedentes -->
+                        <div class="card card-warning card-outline">
+                            <div class="card-header">
+                                <h3 class="card-title"><i class="fas fa-exclamation-triangle mr-2"></i>Información Médica</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <strong class="text-warning"><i class="fas fa-allergies mr-2"></i>Alergias</strong>
+                                    <p class="text-muted small mt-1" th:text="${paciente.alergias ?: 'No registradas'}"></p>
+                                </div>
+                                <div>
+                                    <strong class="text-danger"><i class="fas fa-file-medical mr-2"></i>Antecedentes Médicos</strong>
+                                    <p class="text-muted small mt-1" th:text="${paciente.antecedentesMedicos ?: 'No registrados'}"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs de Historial -->
+                    <div class="col-md-9">
+                        <div class="card card-primary card-outline card-outline-tabs">
+                            <div class="card-header p-0 border-bottom-0">
+                                <ul class="nav nav-tabs" id="custom-tabs" role="tablist">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" id="tratamientos-tab" data-toggle="pill" href="#tratamientos" role="tab" aria-controls="tratamientos" aria-selected="true">
+                                            <i class="fas fa-procedures mr-2"></i>Tratamientos
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" id="citas-tab" data-toggle="pill" href="#citas" role="tab" aria-controls="citas" aria-selected="false">
+                                            <i class="fas fa-calendar-alt mr-2"></i>Citas
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" id="odontograma-tab" data-toggle="pill" href="#odontograma" role="tab" aria-controls="odontograma" aria-selected="false">
+                                            <i class="fas fa-tooth mr-2"></i>Odontograma
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" id="comprobantes-tab" data-toggle="pill" href="#comprobantes" role="tab" aria-controls="comprobantes" aria-selected="false">
+                                            <i class="fas fa-file-invoice-dollar mr-2"></i>Pagos
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="card-body">
+                                <div class="tab-content" id="custom-tabs-content">
+                                    <!-- Tab Tratamientos -->
+                                    <div class="tab-pane fade show active" id="tratamientos" role="tabpanel" aria-labelledby="tratamientos-tab">
+                                        <!-- Tratamientos Realizados -->
+                                        <h5 class="mb-3"><i class="fas fa-check-circle mr-2 text-success"></i>Tratamientos Realizados</h5>
+
+                                        <div th:if="${tratamientosPage != null and tratamientosPage.hasContent()}">
+                                            <!-- Información de paginación -->
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <div class="text-muted small">
+                                                    Mostrando
+                                                    <strong th:text="${tratamientosPage.number * tratamientosPage.size + 1}">1</strong> -
+                                                    <strong th:text="${tratamientosPage.number * tratamientosPage.size + tratamientosPage.numberOfElements}">10</strong>
+                                                    de
+                                                    <strong th:text="${tratamientosPage.totalElements}">50</strong>
+                                                    tratamientos
+                                                </div>
+                                                <div>
+                                                    <label class="mb-0 mr-2 small">Mostrar:</label>
+                                                    <select class="form-control form-control-sm d-inline-block" style="width: auto;"
+                                                            onchange="window.location.href='/pacientes/historial/' + [[${paciente.id}]] + '?tratamientosPage=0'">
+                                                        <option value="10" selected>10</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="table-responsive">
+                                                <table class="table table-hover table-striped">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th>Fecha</th>
+                                                            <th>Procedimiento</th>
+                                                            <th>Piezas Dentales</th>
+                                                            <th>Odontólogo</th>
+                                                            <th>Estado</th>
+                                                            <th>Acciones</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr th:each="tratamiento : ${tratamientosPage.content}">
+                                                            <td>
+                                                                <strong th:text="${#temporals.format(tratamiento.fechaRealizacion, 'dd/MM/yyyy')}"></strong><br>
+                                                                <small class="text-muted" th:text="${#temporals.format(tratamiento.fechaRealizacion, 'HH:mm')}"></small>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge badge-info" th:text="${tratamiento.procedimiento.codigo}"></span>
+                                                                <br th:text="${tratamiento.procedimiento.nombre}"></br>
+                                                            </td>
+                                                            <td th:text="${tratamiento.piezaDental ?: 'N/A'}"></td>
+                                                            <td th:text="${tratamiento.odontologo.nombreCompleto}"></td>
+                                                            <td><span class="badge badge-success">REALIZADO</span></td>
+                                                            <td>
+                                                                <button type="button" class="btn btn-sm btn-primary btn-ver-tratamiento"
+                                                                        th:data-tratamiento-id="${tratamiento.id}"
+                                                                        th:data-procedimiento="${tratamiento.procedimiento.nombre}"
+                                                                        th:data-descripcion="${tratamiento.descripcionTrabajo}"
+                                                                        th:data-fecha="${#temporals.format(tratamiento.fechaRealizacion, 'dd/MM/yyyy HH:mm')}"
+                                                                        th:data-odontologo="${tratamiento.odontologo.nombreCompleto}"
+                                                                        th:data-piezas="${tratamiento.piezaDental}"
+                                                                        title="Ver Detalles">
+                                                                    <i class="fas fa-eye"></i>
+                                                                </button>
+                                                                <button type="button" class="btn btn-sm btn-success btn-ver-cita-asociada"
+                                                                        th:data-cita-id="${tratamiento.cita != null ? tratamiento.cita.id : ''}"
+                                                                        th:disabled="${tratamiento.cita == null}"
+                                                                        title="Ver Cita Asociada">
+                                                                    <i class="fas fa-calendar-alt"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- Controles de paginación -->
+                                            <nav aria-label="Paginación de tratamientos" th:if="${tratamientosPage.totalPages > 1}">
+                                                <ul class="pagination justify-content-center">
+                                                    <!-- Botón Primera página -->
+                                                    <li class="page-item" th:classappend="${tratamientosPage.first} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, tratamientosPage=0)}"
+                                                           aria-label="Primera">
+                                                            <span aria-hidden="true">&laquo;&laquo;</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Botón Anterior -->
+                                                    <li class="page-item" th:classappend="${tratamientosPage.first} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, tratamientosPage=${tratamientosPage.number - 1})}"
+                                                           aria-label="Anterior">
+                                                            <span aria-hidden="true">&laquo;</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Números de página -->
+                                                    <li class="page-item"
+                                                        th:each="i : ${#numbers.sequence(0, tratamientosPage.totalPages - 1)}"
+                                                        th:if="${i >= tratamientosPage.number - 2 && i <= tratamientosPage.number + 2}"
+                                                        th:classappend="${i == tratamientosPage.number} ? 'active'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, tratamientosPage=${i})}"
+                                                           th:text="${i + 1}">1</a>
+                                                    </li>
+
+                                                    <!-- Botón Siguiente -->
+                                                    <li class="page-item" th:classappend="${tratamientosPage.last} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, tratamientosPage=${tratamientosPage.number + 1})}"
+                                                           aria-label="Siguiente">
+                                                            <span aria-hidden="true">&raquo;</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Botón Última página -->
+                                                    <li class="page-item" th:classappend="${tratamientosPage.last} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, tratamientosPage=${tratamientosPage.totalPages - 1})}"
+                                                           aria-label="Última">
+                                                            <span aria-hidden="true">&raquo;&raquo;</span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </nav>
+                                        </div>
+
+                                        <div th:if="${tratamientosPage == null or !tratamientosPage.hasContent()}" class="text-center text-muted p-3 mb-4 border rounded">
+                                            <i class="fas fa-procedures" style="font-size: 3rem; opacity: 0.3;"></i>
+                                            <p class="mt-3">No hay tratamientos realizados para este paciente</p>
+                                        </div>
+
+                                        <!-- Tratamientos Planificados -->
+                                        <h5 class="mb-3 mt-5"><i class="fas fa-calendar-check mr-2 text-info"></i>Tratamientos Planificados</h5>
+
+                                        <div th:if="${tratamientosPlanificados != null and !tratamientosPlanificados.isEmpty()}">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover table-striped">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th>Fecha Planificación</th>
+                                                            <th>Procedimiento</th>
+                                                            <th>Piezas Dentales</th>
+                                                            <th>Odontólogo</th>
+                                                            <th>Estado</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr th:each="tratamiento : ${tratamientosPlanificados}">
+                                                            <td>
+                                                                <strong th:text="${#temporals.format(tratamiento.fechaCreacion, 'dd/MM/yyyy')}"></strong><br>
+                                                                <small class="text-muted" th:text="${#temporals.format(tratamiento.fechaCreacion, 'HH:mm')}"></small>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge badge-info" th:text="${tratamiento.procedimiento.codigo}"></span>
+                                                                <br th:text="${tratamiento.procedimiento.nombre}"></br>
+                                                            </td>
+                                                            <td th:text="${tratamiento.piezasDentales ?: 'N/A'}"></td>
+                                                            <td th:text="${tratamiento.odontologo.nombreCompleto}"></td>
+                                                            <td>
+                                                                <span class="badge badge-warning" th:if="${tratamiento.estado == 'PLANIFICADO'}">PLANIFICADO</span>
+                                                                <span class="badge badge-success" th:if="${tratamiento.estado == 'COMPLETADO'}">COMPLETADO</span>
+                                                                <span class="badge badge-secondary" th:if="${tratamiento.estado == 'CANCELADO'}">CANCELADO</span>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div th:if="${tratamientosPlanificados == null or tratamientosPlanificados.isEmpty()}" class="text-center text-muted p-3 border rounded">
+                                            <i class="fas fa-calendar-check" style="font-size: 3rem; opacity: 0.3;"></i>
+                                            <p class="mt-3">No hay tratamientos planificados para este paciente</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tab Citas -->
+                                    <div class="tab-pane fade" id="citas" role="tabpanel" aria-labelledby="citas-tab">
+                                        <h5 class="mb-3"><i class="fas fa-calendar-alt mr-2"></i>Historial de Citas</h5>
+
+                                        <div th:if="${citasPage != null and citasPage.hasContent()}">
+                                            <!-- Información de paginación -->
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <div class="text-muted small">
+                                                    Mostrando
+                                                    <strong th:text="${citasPage.number * citasPage.size + 1}">1</strong> -
+                                                    <strong th:text="${citasPage.number * citasPage.size + citasPage.numberOfElements}">10</strong>
+                                                    de
+                                                    <strong th:text="${citasPage.totalElements}">50</strong>
+                                                    citas
+                                                </div>
+                                                <div>
+                                                    <label class="mb-0 mr-2 small">Mostrar:</label>
+                                                    <select class="form-control form-control-sm d-inline-block" style="width: auto;"
+                                                            onchange="window.location.href='/pacientes/historial/' + [[${paciente.id}]] + '?citasPageNum=0&citasSize=' + this.value">
+                                                        <option value="10" th:selected="${citasPage.size == 10}">10</option>
+                                                        <option value="20" th:selected="${citasPage.size == 20}">20</option>
+                                                        <option value="50" th:selected="${citasPage.size == 50}">50</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="table-responsive">
+                                                <table class="table table-hover table-striped">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th>Fecha y Hora</th>
+                                                            <th>Odontólogo</th>
+                                                            <th>Procedimiento</th>
+                                                            <th>Estado</th>
+                                                            <th>Acciones</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr th:each="cita : ${citasPage.content}">
+                                                            <td>
+                                                                <strong th:text="${#temporals.format(cita.fechaHoraInicio, 'dd/MM/yyyy')}"></strong><br>
+                                                                <small class="text-muted" th:text="${#temporals.format(cita.fechaHoraInicio, 'HH:mm')} + ' - ' + ${#temporals.format(cita.fechaHoraFin, 'HH:mm')}"></small>
+                                                            </td>
+                                                            <td th:text="${cita.odontologo.nombreCompleto}"></td>
+                                                            <td>
+                                                                <span th:if="${cita.procedimiento != null}" th:text="${cita.procedimiento.nombre}"></span>
+                                                                <span th:if="${cita.procedimiento == null}" class="text-muted">Sin procedimiento</span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge badge-warning" th:if="${cita.estadoCita.nombre == 'PENDIENTE'}" th:text="${cita.estadoCita.nombre}"></span>
+                                                                <span class="badge badge-info" th:if="${cita.estadoCita.nombre == 'CONFIRMADA'}" th:text="${cita.estadoCita.nombre}"></span>
+                                                                <span class="badge badge-success" th:if="${cita.estadoCita.nombre == 'ASISTIO'}" th:text="${cita.estadoCita.nombre}"></span>
+                                                                <span class="badge badge-danger" th:if="${cita.estadoCita.nombre == 'NO_ASISTIO'}" th:text="${cita.estadoCita.nombre}"></span>
+                                                                <span class="badge badge-secondary" th:if="${#strings.startsWith(cita.estadoCita.nombre, 'CANCELADA')}" th:text="${cita.estadoCita.nombre}"></span>
+                                                                <span class="badge badge-dark" th:if="${cita.estadoCita.nombre == 'REPROGRAMADA'}" th:text="${cita.estadoCita.nombre}"></span>
+                                                            </td>
+                                                            <td>
+                                                                <a th:href="@{/citas(verCita=${cita.id})}" class="btn btn-sm btn-primary" title="Ver Detalle de Cita">
+                                                                    <i class="fas fa-eye"></i>
+                                                                </a>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- Controles de paginación -->
+                                            <nav aria-label="Paginación de citas" th:if="${citasPage.totalPages > 1}">
+                                                <ul class="pagination justify-content-center">
+                                                    <!-- Botón Primera página -->
+                                                    <li class="page-item" th:classappend="${citasPage.first} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, citasPageNum=0, citasSize=${citasPage.size})}"
+                                                           aria-label="Primera">
+                                                            <span aria-hidden="true">&laquo;&laquo;</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Botón Anterior -->
+                                                    <li class="page-item" th:classappend="${citasPage.first} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, citasPageNum=${citasPage.number - 1}, citasSize=${citasPage.size})}"
+                                                           aria-label="Anterior">
+                                                            <span aria-hidden="true">&laquo;</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Números de página -->
+                                                    <li class="page-item"
+                                                        th:each="i : ${#numbers.sequence(0, citasPage.totalPages - 1)}"
+                                                        th:if="${i >= citasPage.number - 2 && i <= citasPage.number + 2}"
+                                                        th:classappend="${i == citasPage.number} ? 'active'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, citasPageNum=${i}, citasSize=${citasPage.size})}"
+                                                           th:text="${i + 1}">1</a>
+                                                    </li>
+
+                                                    <!-- Botón Siguiente -->
+                                                    <li class="page-item" th:classappend="${citasPage.last} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, citasPageNum=${citasPage.number + 1}, citasSize=${citasPage.size})}"
+                                                           aria-label="Siguiente">
+                                                            <span aria-hidden="true">&raquo;</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Botón Última página -->
+                                                    <li class="page-item" th:classappend="${citasPage.last} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, citasPageNum=${citasPage.totalPages - 1}, citasSize=${citasPage.size})}"
+                                                           aria-label="Última">
+                                                            <span aria-hidden="true">&raquo;&raquo;</span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </nav>
+                                        </div>
+
+                                        <div th:if="${citasPage == null or !citasPage.hasContent()}" class="text-center text-muted p-5">
+                                            <i class="fas fa-calendar-alt" style="font-size: 4rem; opacity: 0.3;"></i>
+                                            <p class="mt-3">No hay citas registradas para este paciente</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tab Odontograma -->
+                                    <div class="tab-pane fade" id="odontograma" role="tabpanel" aria-labelledby="odontograma-tab">
+                                        <div class="card">
+                                            <div class="card-header bg-primary">
+                                                <h5 class="mb-0"><i class="fas fa-tooth mr-2"></i>Carta Dental (Odontograma)</h5>
+                                            </div>
+                                            <div class="card-body text-center">
+                                                <div class="mb-4">
+                                                    <i class="fas fa-tooth text-primary" style="font-size: 5rem; opacity: 0.2;"></i>
+                                                </div>
+                                                <h5 class="mb-3">Visualice y edite el estado dental completo del paciente</h5>
+                                                <p class="text-muted mb-4">
+                                                    El odontograma muestra el estado de las 32 piezas dentales permanentes,
+                                                    incluyendo caries, restauraciones, endodoncias, coronas y más.
+                                                </p>
+                                                <a th:href="@{/odontograma/paciente/{id}(id=${paciente.usuario.id})}"
+                                                   class="btn btn-primary btn-lg">
+                                                    <i class="fas fa-external-link-alt mr-2"></i>
+                                                    Ver Odontograma Completo
+                                                </a>
+                                            </div>
+                                            <div class="card-footer text-muted">
+                                                <small>
+                                                    <i class="fas fa-info-circle mr-1"></i>
+                                                    El odontograma se actualiza automáticamente cuando se realizan tratamientos
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tab Comprobantes -->
+                                    <div class="tab-pane fade" id="comprobantes" role="tabpanel" aria-labelledby="comprobantes-tab">
+                                        <h5 class="mb-3"><i class="fas fa-file-invoice-dollar mr-2"></i>Historial de Pagos y Comprobantes</h5>
+
+                                        <div th:if="${comprobantesPage != null and comprobantesPage.hasContent()}">
+                                            <!-- Información de paginación -->
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <div class="text-muted small">
+                                                    Mostrando
+                                                    <strong th:text="${comprobantesPage.number * comprobantesPage.size + 1}">1</strong> -
+                                                    <strong th:text="${comprobantesPage.number * comprobantesPage.size + comprobantesPage.numberOfElements}">10</strong>
+                                                    de
+                                                    <strong th:text="${comprobantesPage.totalElements}">50</strong>
+                                                    comprobantes
+                                                </div>
+                                                <div>
+                                                    <label class="mb-0 mr-2 small">Mostrar:</label>
+                                                    <select class="form-control form-control-sm d-inline-block" style="width: auto;"
+                                                            onchange="window.location.href='/pacientes/historial/' + [[${paciente.id}]] + '?comprobantesPageNum=0&comprobantesSize=' + this.value">
+                                                        <option value="10" th:selected="${comprobantesPage.size == 10}">10</option>
+                                                        <option value="20" th:selected="${comprobantesPage.size == 20}">20</option>
+                                                        <option value="50" th:selected="${comprobantesPage.size == 50}">50</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="table-responsive">
+                                                <table class="table table-hover table-striped">
+                                                    <thead class="thead-light">
+                                                        <tr>
+                                                            <th>Número</th>
+                                                            <th>Fecha Emisión</th>
+                                                            <th>Descripción</th>
+                                                            <th>Monto Total</th>
+                                                            <th>Pagado</th>
+                                                            <th>Pendiente</th>
+                                                            <th>Estado</th>
+                                                            <th>Acciones</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr th:each="comprobante : ${comprobantesPage.content}">
+                                                            <td>
+                                                                <strong th:text="${comprobante.numeroComprobante}"></strong><br>
+                                                                <small class="text-muted" th:text="${comprobante.tipoComprobante}"></small>
+                                                            </td>
+                                                            <td>
+                                                                <span th:text="${#temporals.format(comprobante.fechaEmision, 'dd/MM/yyyy')}"></span><br>
+                                                                <small class="text-muted" th:text="${#temporals.format(comprobante.fechaEmision, 'HH:mm')}"></small>
+                                                            </td>
+                                                            <td>
+                                                                <span th:text="${comprobante.descripcion}"></span>
+                                                            </td>
+                                                            <td>
+                                                                <strong th:text="'S/ ' + ${#numbers.formatDecimal(comprobante.montoTotal, 1, 2)}"></strong>
+                                                            </td>
+                                                            <td>
+                                                                <span class="text-success" th:text="'S/ ' + ${#numbers.formatDecimal(comprobante.montoPagado, 1, 2)}"></span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="text-danger" th:if="${comprobante.montoPendiente > 0}" th:text="'S/ ' + ${#numbers.formatDecimal(comprobante.montoPendiente, 1, 2)}"></span>
+                                                                <span class="text-muted" th:if="${comprobante.montoPendiente == 0}">S/ 0.00</span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge"
+                                                                      th:classappend="${comprobante.estadoPago.nombre == 'PENDIENTE'} ? 'badge-warning' :
+                                                                                      (${comprobante.estadoPago.nombre == 'PAGADO_PARCIAL'} ? 'badge-info' :
+                                                                                      (${comprobante.estadoPago.nombre == 'PAGADO_TOTAL'} ? 'badge-success' :
+                                                                                      (${comprobante.estadoPago.nombre == 'ANULADO'} ? 'badge-danger' : 'badge-secondary')))"
+                                                                      th:text="${comprobante.estadoPago.nombre}">
+                                                                    PENDIENTE
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <a th:href="@{/facturacion/detalle/{id}(id=${comprobante.id})}" class="btn btn-sm btn-info" title="Ver Detalle">
+                                                                    <i class="fas fa-eye"></i>
+                                                                </a>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- Controles de paginación -->
+                                            <nav aria-label="Paginación de comprobantes" th:if="${comprobantesPage.totalPages > 1}">
+                                                <ul class="pagination justify-content-center">
+                                                    <!-- Botón Primera página -->
+                                                    <li class="page-item" th:classappend="${comprobantesPage.first} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, comprobantesPageNum=0, comprobantesSize=${comprobantesPage.size})}"
+                                                           aria-label="Primera">
+                                                            <span aria-hidden="true">&laquo;&laquo;</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Botón Anterior -->
+                                                    <li class="page-item" th:classappend="${comprobantesPage.first} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, comprobantesPageNum=${comprobantesPage.number - 1}, comprobantesSize=${comprobantesPage.size})}"
+                                                           aria-label="Anterior">
+                                                            <span aria-hidden="true">&laquo;</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Números de página -->
+                                                    <li class="page-item"
+                                                        th:each="i : ${#numbers.sequence(0, comprobantesPage.totalPages - 1)}"
+                                                        th:if="${i >= comprobantesPage.number - 2 && i <= comprobantesPage.number + 2}"
+                                                        th:classappend="${i == comprobantesPage.number} ? 'active'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, comprobantesPageNum=${i}, comprobantesSize=${comprobantesPage.size})}"
+                                                           th:text="${i + 1}">1</a>
+                                                    </li>
+
+                                                    <!-- Botón Siguiente -->
+                                                    <li class="page-item" th:classappend="${comprobantesPage.last} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, comprobantesPageNum=${comprobantesPage.number + 1}, comprobantesSize=${comprobantesPage.size})}"
+                                                           aria-label="Siguiente">
+                                                            <span aria-hidden="true">&raquo;</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Botón Última página -->
+                                                    <li class="page-item" th:classappend="${comprobantesPage.last} ? 'disabled'">
+                                                        <a class="page-link"
+                                                           th:href="@{/pacientes/historial/{id}(id=${paciente.id}, comprobantesPageNum=${comprobantesPage.totalPages - 1}, comprobantesSize=${comprobantesPage.size})}"
+                                                           aria-label="Última">
+                                                            <span aria-hidden="true">&raquo;&raquo;</span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </nav>
+                                        </div>
+
+                                        <div th:if="${comprobantesPage == null or !comprobantesPage.hasContent()}" class="text-center text-muted p-5">
+                                            <i class="fas fa-file-invoice-dollar" style="font-size: 4rem; opacity: 0.3;"></i>
+                                            <p class="mt-3">No hay comprobantes registrados para este paciente</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modal Ver Detalle Tratamiento -->
+        <div class="modal fade" id="modalVerDetalleTratamiento" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-procedures mr-2"></i>Detalle del Tratamiento
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <dl class="row">
+                                    <dt class="col-sm-5">Procedimiento:</dt>
+                                    <dd class="col-sm-7" id="modalProcedimiento"></dd>
+
+                                    <dt class="col-sm-5">Fecha:</dt>
+                                    <dd class="col-sm-7" id="modalFecha"></dd>
+
+                                    <dt class="col-sm-5">Odontólogo:</dt>
+                                    <dd class="col-sm-7" id="modalOdontologo"></dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6">
+                                <dl class="row">
+                                    <dt class="col-sm-5">Piezas Dentales:</dt>
+                                    <dd class="col-sm-7" id="modalPiezas"></dd>
+                                </dl>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h6 class="text-primary"><i class="fas fa-file-alt mr-2"></i>Descripción del Trabajo</h6>
+                        <div class="bg-light p-3 rounded" id="modalDescripcion" style="white-space: pre-wrap; max-height: 300px; overflow-y: auto;">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i>Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
+
+<!-- Scripts específicos de la página -->
+<th:block id="page-scripts">
+<script>
+    console.log('Inicializando scripts del historial...'); // Debug
+    console.log('jQuery cargado:', typeof jQuery !== 'undefined'); // Debug
+    console.log('Botones encontrados:', $('.btn-ver-tratamiento').length); // Debug
+
+    $(document).ready(function() {
+        console.log('Document ready ejecutado'); // Debug
+
+        // Ver detalle del tratamiento
+        $(document).on('click', '.btn-ver-tratamiento', function(e) {
+            e.preventDefault();
+            console.log('Click en Ver Detalles'); // Debug
+
+            const procedimiento = $(this).data('procedimiento');
+            const descripcion = $(this).data('descripcion');
+            const fecha = $(this).data('fecha');
+            const odontologo = $(this).data('odontologo');
+            const piezas = $(this).data('piezas');
+
+            console.log('Datos del tratamiento:', { procedimiento, descripcion, fecha, odontologo, piezas }); // Debug
+
+            $('#modalProcedimiento').text(procedimiento);
+            $('#modalFecha').text(fecha);
+            $('#modalOdontologo').text(odontologo);
+            $('#modalPiezas').text(piezas || 'No especificado');
+            $('#modalDescripcion').text(descripcion || 'Sin observaciones adicionales');
+
+            $('#modalVerDetalleTratamiento').modal('show');
+        });
+
+        // Ver cita asociada al tratamiento
+        $(document).on('click', '.btn-ver-cita-asociada', function(e) {
+            e.preventDefault();
+            console.log('Click en Ver Cita Asociada'); // Debug
+
+            const citaId = $(this).data('cita-id');
+            console.log('Cita ID:', citaId); // Debug
+
+            if (!citaId || citaId === '') {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('Información', 'Este tratamiento no tiene una cita asociada', 'info');
+                } else {
+                    alert('Este tratamiento no tiene una cita asociada');
+                }
+                return;
+            }
+
+            // Redirigir al calendario con parámetro para abrir el modal de detalle de cita
+            window.location.href = '/citas?verCita=' + citaId;
+        });
+
+        console.log('Event handlers registrados'); // Debug
+    });
+</script>
+</th:block>

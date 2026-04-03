@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OdontoApp | Completar Registro</title>
+
+    <!-- Estilos base -->
+    <link rel="stylesheet" th:href="@{/adminlte/plugins/fontawesome-free/css/all.min.css}">
+    <link rel="stylesheet" th:href="@{/adminlte/dist/css/adminlte.min.css}">
+
+    <style>
+        body {
+            background-color: #f4f6f9;
+        }
+
+        .register-box {
+            width: 95%;
+            /* Ocupa el 95% de la pantalla en móviles */
+            max-width: 640px;
+            /* No crece más de 640px en PC */
+            margin: 40px auto;
+            /* auto centra la caja horizontalmente */
+            padding: 0 10px;
+            /* Un pequeño margen interno de seguridad */
+        }
+
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-header {
+            border-bottom: none;
+            background: #ffffff;
+            padding-bottom: 0;
+        }
+
+        .card-header .h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #007bff;
+        }
+
+        .card-header .h1 b {
+            color: #0056b3;
+        }
+
+        .login-box-msg {
+            font-size: 1.05rem;
+            margin-bottom: 25px;
+            color: #555;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-control {
+            border-radius: 8px;
+        }
+
+        .btn-primary {
+            border-radius: 8px;
+            padding: 10px;
+            font-weight: 600;
+            background-color: #007bff;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .alert {
+            border-radius: 8px;
+        }
+
+        .input-group-append button {
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+
+<body class="hold-transition register-page">
+    <div class="register-box">
+        <div class="card card-outline card-primary">
+            <div class="card-header text-center">
+                <a href="#" class="h1"><b>Odonto</b>App</a>
+            </div>
+
+            <div class="card-body">
+                <p class="login-box-msg">Completa tus datos para finalizar tu registro</p>
+
+                <form th:action="@{/registro/completar}" th:object="${pacienteDTO}" method="post">
+
+                    <!-- Mensaje de error general (excepciones o validaciones manuales) -->
+                    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong><i class="fas fa-ban"></i> Error:</strong> <span th:text="${error}"></span>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <!-- Errores de validación de campos -->
+                    <div th:if="${#fields.hasAnyErrors()}" class="alert alert-danger alert-dismissible fade show"
+                        role="alert">
+                        <strong><i class="fas fa-exclamation-triangle"></i> Error de Validación:</strong>
+                        Por favor corrige los errores indicados.
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="token" th:value="${token}" />
+                    <input type="hidden" th:field="*{email}" />
+
+                    <!-- EMAIL -->
+                    <div class="form-group">
+                        <label>Email (verificado)</label>
+                        <input type="email" class="form-control" th:value="*{email}" readonly>
+                    </div>
+
+                    <!-- DOCUMENTO -->
+                    <div class="form-row">
+                        <div class="col-md-4">
+                            <label>Tipo Documento</label>
+                            <select class="form-control" th:field="*{tipoDocumentoId}"
+                                th:classappend="${#fields.hasErrors('tipoDocumentoId')} ? 'is-invalid' : ''">
+                                <option value="">Seleccione...</option>
+                                <option th:each="tipo : ${tiposDocumento}" th:value="${tipo.id}"
+                                    th:text="${tipo.nombre}"></option>
+                            </select>
+                            <div th:if="${#fields.hasErrors('tipoDocumentoId')}" class="invalid-feedback d-block"
+                                th:errors="*{tipoDocumentoId}"></div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label>Número Documento</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" th:field="*{numeroDocumento}"
+                                    placeholder="Número de Documento"
+                                    th:classappend="${#fields.hasErrors('numeroDocumento')} ? 'is-invalid' : ''">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        id="btn-buscar-reniec-registro">Buscar</button>
+                                </div>
+                            </div>
+                            <small id="doc-error" class="form-text text-danger"></small>
+                            <div th:if="${#fields.hasErrors('numeroDocumento')}" class="invalid-feedback d-block"
+                                th:errors="*{numeroDocumento}"></div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label>Nombre Completo</label>
+                            <input type="text" class="form-control" id="nombreCompleto" th:field="*{nombreCompleto}"
+                                readonly th:classappend="${#fields.hasErrors('nombreCompleto')} ? 'is-invalid' : ''">
+                            <div th:if="${#fields.hasErrors('nombreCompleto')}" class="invalid-feedback d-block"
+                                th:errors="*{nombreCompleto}"></div>
+                            <small class="form-text text-muted">Busque por DNI para autocompletar</small>
+                        </div>
+                    </div>
+
+                    <!-- CONTRASEÑA -->
+                    <div class="form-row mt-3">
+                        <div class="col-md-6">
+                            <label>Contraseña</label>
+                            <input type="password" name="password" id="password" class="form-control"
+                                placeholder="Contraseña (mín. 8 caracteres)" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label>Confirmar Contraseña</label>
+                            <input type="password" name="confirmPassword" id="confirmPassword" class="form-control"
+                                placeholder="Confirmar contraseña" required>
+                        </div>
+                    </div>
+                    <small id="passwordErrorJS" class="form-text text-danger mb-2"></small>
+
+                    <!-- DATOS PERSONALES -->
+                    <div class="form-row mt-3">
+                        <div class="col-md-6">
+                            <label>Teléfono</label>
+                            <input type="text" class="form-control" id="telefono" th:field="*{telefono}" maxlength="15"
+                                placeholder="Ej: 987654321">
+                            <small id="telefono-error" class="form-text text-danger"></small>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Fecha de Nacimiento</label>
+                            <input type="date" class="form-control" id="fechaNacimiento" th:field="*{fechaNacimiento}">
+                            <small id="fecha-error" class="form-text text-danger"></small>
+                        </div>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label>Dirección</label>
+                        <input type="text" class="form-control" th:field="*{direccion}">
+                    </div>
+
+                    <!-- CAMPOS OPCIONALES -->
+                    <div class="form-group">
+                        <label>Alergias Conocidas (opcional)</label>
+                        <textarea class="form-control" th:field="*{alergias}" rows="2"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Antecedentes Médicos (opcional)</label>
+                        <textarea class="form-control" th:field="*{antecedentesMedicos}" rows="2"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block mt-4">Completar Registro</button>
+                </form>
+
+                <p class="mt-4 mb-0 text-center">
+                    <a th:href="@{/login}">Ya tengo una cuenta</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script th:src="@{/adminlte/plugins/jquery/jquery.min.js}"></script>
+    <script th:src="@{/adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js}"></script>
+
+    <script>
+        $(document).ready(function () {
+            const $tipoDoc = $('#tipoDocumentoId');
+            const $numeroDoc = $('#numeroDocumento');
+            const $nombre = $('#nombreCompleto');
+            const $telefono = $('#telefono');
+            const $fechaNac = $('#fechaNacimiento');
+
+            // ========================================
+            // VALIDACIONES POR TIPO DE DOCUMENTO
+            // ========================================
+            function validarLongitudDocumento() {
+                const tipoDocTexto = $tipoDoc.find('option:selected').text().trim().toUpperCase();
+                const numero = $numeroDoc.val().trim();
+                const $error = $('#doc-error');
+
+                $error.text('');
+
+                if (!numero) return true;
+
+                // DNI: 8 dígitos
+                if (tipoDocTexto === 'DNI') {
+                    if (!/^\d{8}$/.test(numero)) {
+                        $error.text('El DNI debe tener exactamente 8 dígitos numéricos');
+                        return false;
+                    }
+                }
+                // RUC: 11 dígitos
+                else if (tipoDocTexto === 'RUC') {
+                    if (!/^\d{11}$/.test(numero)) {
+                        $error.text('El RUC debe tener exactamente 11 dígitos numéricos');
+                        return false;
+                    }
+                }
+                // CE/Pasaporte: 9-12 caracteres alfanuméricos
+                else if (tipoDocTexto.includes('CARNET') || tipoDocTexto.includes('EXTRANJERÍA') || tipoDocTexto.includes('PASAPORTE')) {
+                    if (!/^[A-Z0-9]{7,12}$/i.test(numero)) {
+                        $error.text('El documento debe tener entre 7 y 12 caracteres alfanuméricos');
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            // Solo permitir números en campos numéricos según tipo de documento
+            $numeroDoc.on('input', function () {
+                const tipoDocTexto = $tipoDoc.find('option:selected').text().trim().toUpperCase();
+                let valor = $(this).val();
+
+                // Para DNI y RUC, solo números
+                if (tipoDocTexto === 'DNI' || tipoDocTexto === 'RUC') {
+                    valor = valor.replace(/[^0-9]/g, '');
+
+                    // Limitar longitud
+                    if (tipoDocTexto === 'DNI' && valor.length > 8) {
+                        valor = valor.substring(0, 8);
+                    } else if (tipoDocTexto === 'RUC' && valor.length > 11) {
+                        valor = valor.substring(0, 11);
+                    }
+                } else {
+                    // Para CE/Pasaporte, solo alfanuméricos
+                    valor = valor.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                    if (valor.length > 12) {
+                        valor = valor.substring(0, 12);
+                    }
+                }
+
+                $(this).val(valor);
+                validarLongitudDocumento();
+            });
+
+            // Validar al cambiar tipo de documento
+            $tipoDoc.on('change', function () {
+                $numeroDoc.val('');
+                $('#doc-error').text('');
+                validarLongitudDocumento();
+            });
+
+            // Si quita el número de documento, borrar nombre
+            $numeroDoc.on('blur', function () {
+                if (!$(this).val().trim()) {
+                    $nombre.val('').attr('readonly', true);
+                    $('#doc-error').text('');
+                }
+            });
+
+            // ========================================
+            // TELÉFONO: SOLO NÚMEROS
+            // ========================================
+            $telefono.on('input', function () {
+                let valor = $(this).val().replace(/[^0-9]/g, '');
+
+                // Limitar a 15 dígitos (máximo internacional)
+                if (valor.length > 15) {
+                    valor = valor.substring(0, 15);
+                }
+
+                $(this).val(valor);
+
+                // Validar que tenga al menos 7 dígitos (mínimo para Perú)
+                const $error = $('#telefono-error');
+                if (valor.length > 0 && valor.length < 7) {
+                    $error.text('El teléfono debe tener al menos 7 dígitos');
+                } else {
+                    $error.text('');
+                }
+            });
+
+            // ========================================
+            // FECHA DE NACIMIENTO: NO FUTURAS
+            // ========================================
+            // Setear máximo como hoy
+            const hoy = new Date().toISOString().split('T')[0];
+            $fechaNac.attr('max', hoy);
+
+            $fechaNac.on('change', function () {
+                const fechaInput = $(this).val(); // Formato YYYY-MM-DD
+                const $error = $('#fecha-error');
+
+                if (!fechaInput) {
+                    $error.text('');
+                    return;
+                }
+
+                // Parsear la fecha manualmente para evitar problemas de timezone
+                const partes = fechaInput.split('-');
+                const anio = parseInt(partes[0]);
+                const mes = parseInt(partes[1]) - 1; // mes en JS es 0-11
+                const dia = parseInt(partes[2]);
+
+                const fechaSeleccionada = new Date(anio, mes, dia);
+                const fechaHoy = new Date();
+                fechaHoy.setHours(0, 0, 0, 0); // Normalizar a medianoche
+
+                // Validar que no sea futura
+                if (fechaSeleccionada > fechaHoy) {
+                    $error.text('La fecha de nacimiento no puede ser futura');
+                    $(this).val('');
+                    return;
+                }
+
+                // Validar edad mínima (al menos 1 año)
+                const edad = calcularEdad(fechaSeleccionada);
+                if (edad < 1) {
+                    $error.text('La fecha de nacimiento es inválida');
+                    $(this).val('');
+                    return;
+                }
+
+                // Si pasa todas las validaciones, limpiar error
+                $error.text('');
+            });
+
+            function calcularEdad(fechaNacimiento) {
+                const hoy = new Date();
+                let edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
+                const mes = hoy.getMonth() - fechaNacimiento.getMonth();
+                if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNacimiento.getDate())) {
+                    edad--;
+                }
+                return edad;
+            }
+
+            // ========================================
+            // BÚSQUEDA EN RENIEC
+            // ========================================
+            $('#btn-buscar-reniec-registro').click(function () {
+                const numDoc = $numeroDoc.val();
+                const tipoDocId = $tipoDoc.val();
+                const $errorSpan = $('#doc-error');
+
+                $errorSpan.text('');
+                $nombre.val('');
+
+                if (!numDoc || !tipoDocId) {
+                    $errorSpan.text('Seleccione el tipo y escriba el número de documento.');
+                    return;
+                }
+
+                // Validar longitud antes de buscar
+                if (!validarLongitudDocumento()) {
+                    return;
+                }
+
+                if ($tipoDoc.find('option:selected').text().trim().toUpperCase() !== 'DNI') {
+                    $errorSpan.text('La búsqueda automática solo está disponible para DNI.');
+                    $nombre.attr('readonly', false);
+                    return;
+                }
+
+                // Deshabilitar botón mientras busca
+                const $btn = $(this);
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Buscando...');
+
+                $.ajax({
+                    url: '/api/reniec',
+                    type: 'GET',
+                    data: { numDoc: numDoc, tipoDocId: tipoDocId },
+                    success: function (response) {
+                        if (response.nombreCompleto) {
+                            $nombre.val(response.nombreCompleto).attr('readonly', true);
+                            $errorSpan.text('✓ Datos cargados con éxito').removeClass('text-danger').addClass('text-success');
+                        }
+                    },
+                    error: function (xhr) {
+                        const errorMsg = xhr.responseJSON && xhr.responseJSON.error ?
+                            xhr.responseJSON.error : 'Error al consultar Reniec.';
+                        $errorSpan.text(errorMsg).removeClass('text-success').addClass('text-danger');
+                        $nombre.attr('readonly', false);
+                    },
+                    complete: function () {
+                        $btn.prop('disabled', false).html('Buscar');
+                    }
+                });
+            });
+
+            // ========================================
+            // VALIDACIÓN DE CONTRASEÑAS
+            // ========================================
+            $('form').on('submit', function (event) {
+                const password = $('#password').val();
+                const confirmPassword = $('#confirmPassword').val();
+                const $errorElement = $('#passwordErrorJS');
+                const ESPECIALES = '!@#$%&*';
+
+                $errorElement.text('');
+
+                // Validar número de documento antes de enviar
+                if (!validarLongitudDocumento()) {
+                    event.preventDefault();
+                    $numeroDoc.focus();
+                    return false;
+                }
+
+                // Validar teléfono
+                const telefono = $telefono.val();
+                if (telefono && telefono.length < 7) {
+                    event.preventDefault();
+                    $('#telefono-error').text('El teléfono debe tener al menos 7 dígitos');
+                    $telefono.focus();
+                    return false;
+                }
+
+                // Validar fecha de nacimiento
+                const fechaNac = $fechaNac.val();
+                if (fechaNac) {
+                    const partes = fechaNac.split('-');
+                    const fechaSeleccionada = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+                    const fechaHoy = new Date();
+                    fechaHoy.setHours(0, 0, 0, 0);
+
+                    if (fechaSeleccionada > fechaHoy) {
+                        event.preventDefault();
+                        $('#fecha-error').text('La fecha de nacimiento no puede ser futura');
+                        $fechaNac.focus();
+                        return false;
+                    }
+                }
+
+                // Validar contraseña
+                if (password.length < 8) {
+                    $errorElement.text('La contraseña debe tener al menos 8 caracteres.');
+                    event.preventDefault();
+                    return false;
+                }
+
+                const tieneMayuscula = /[A-Z]/.test(password);
+                const tieneMinuscula = /[a-z]/.test(password);
+                const tieneNumero = /[0-9]/.test(password);
+                const tieneEspecial = new RegExp(`[${ESPECIALES.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}]`).test(password);
+
+                if (!tieneMayuscula) {
+                    $errorElement.text('La contraseña debe contener al menos una letra mayúscula.');
+                    event.preventDefault();
+                    return false;
+                }
+                if (!tieneMinuscula) {
+                    $errorElement.text('La contraseña debe contener al menos una letra minúscula.');
+                    event.preventDefault();
+                    return false;
+                }
+                if (!tieneNumero) {
+                    $errorElement.text('La contraseña debe contener al menos un número.');
+                    event.preventDefault();
+                    return false;
+                }
+                if (!tieneEspecial) {
+                    $errorElement.text('La contraseña debe contener al menos un carácter especial (!@#$%&*).');
+                    event.preventDefault();
+                    return false;
+                }
+
+                if (password !== confirmPassword) {
+                    $errorElement.text('Las contraseñas no coinciden.');
+                    event.preventDefault();
+                    return false;
+                }
+
+                return true;
+            });
+        });
+    </script>
+</body>
+
+</html>

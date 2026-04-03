@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(titulo='Agenda de Citas', contenido=~{::#contenido-principal}, scripts=~{::#page-scripts})}">
+
+<body>
+<div id="contenido-principal">
+
+    <style>
+        /* Estilo para fechas y horarios pasados en el calendario */
+        .fc-day-past {
+            background-color: #f5f5f5 !important;
+            opacity: 0.6;
+        }
+
+        .fc-timegrid-slot.fc-timegrid-slot-past {
+            background-color: #fafafa !important;
+            opacity: 0.5;
+        }
+
+        /* Hacer que los slots pasados no sean clickeables visualmente */
+        .fc-timegrid-slot-past {
+            cursor: not-allowed !important;
+        }
+
+        /* Badge personalizado para estado "Reprogramada" (naranja) */
+        .badge-orange {
+            background-color: #fd7e14;
+            color: white;
+        }
+    </style>
+
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Agenda de Citas</h1>
+                    <p class="text-muted">Visualiza y gestiona las citas de la clínica</p>
+                </div>
+                <div class="col-sm-6">
+                    <button type="button" class="btn btn-primary float-sm-right" data-toggle="modal" data-target="#modalAgendarCita"
+                            sec:authorize="hasAuthority('CREAR_CITAS')">
+                        <i class="fas fa-plus"></i> Nueva Cita
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+
+            <!-- Mensajes flash -->
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span th:text="${success}"></span>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span th:text="${warning}"></span>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span th:text="${error}"></span>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <!-- Navegación de pestañas -->
+            <ul class="nav nav-tabs" id="citasTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="calendario-tab" data-toggle="tab" href="#tab-calendario" role="tab">
+                        <i class="far fa-calendar-alt mr-2"></i>Vista Calendario
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="lista-tab" data-toggle="tab" href="#tab-lista" role="tab">
+                        <i class="fas fa-list mr-2"></i>Vista Lista
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Contenido de pestañas -->
+            <div class="tab-content" id="citasTabContent">
+
+                <!-- TAB: Vista Calendario -->
+                <div class="tab-pane fade show active" id="tab-calendario" role="tabpanel">
+
+            <!-- Filtros -->
+            <div class="card card-outline card-info mb-3 mt-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="filtroOdontologo">Filtrar por Odontólogo:</label>
+                            <select id="filtroOdontologo" class="form-control">
+                                <option value="">Todos los odontólogos</option>
+                                <option th:each="odontologo : ${listaOdontologos}"
+                                        th:value="${odontologo.id}"
+                                        th:text="${odontologo.nombreCompleto}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="mt-4">
+                                <strong class="mr-2">Leyenda:</strong>
+                                <span class="badge badge-warning mr-2"><i class="fas fa-circle"></i> Pendiente</span>
+                                <span class="badge badge-info mr-2"><i class="fas fa-circle"></i> Confirmada</span>
+                                <span class="badge badge-success mr-2"><i class="fas fa-circle"></i> Asistió</span>
+                                <span class="badge badge-danger mr-2"><i class="fas fa-circle"></i> No Asistió</span>
+                                <small class="text-muted ml-2"><em>(Estados cancelados/reprogramados no se muestran en calendario)</em></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendario -->
+            <div class="card card-primary">
+                <div class="card-body p-0">
+                    <div id="calendario" style="padding: 15px;"></div>
+                </div>
+            </div>
+
+                </div>
+                <!-- FIN TAB: Vista Calendario -->
+
+                <!-- TAB: Vista Lista -->
+                <div class="tab-pane fade" id="tab-lista" role="tabpanel">
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-list mr-2"></i>Listado de Citas
+                            </h3>
+                        </div>
+
+                        <!-- Panel de Filtros -->
+                        <div class="card-body border-bottom pb-3">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group mb-2">
+                                        <label for="filtroFechaDesde" class="mb-1"><small>Fecha Desde:</small></label>
+                                        <input type="date" id="filtroFechaDesde" class="form-control form-control-sm">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group mb-2">
+                                        <label for="filtroFechaHasta" class="mb-1"><small>Fecha Hasta:</small></label>
+                                        <input type="date" id="filtroFechaHasta" class="form-control form-control-sm">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group mb-2">
+                                        <label for="filtroEstado" class="mb-1"><small>Estado:</small></label>
+                                        <select id="filtroEstado" class="form-control form-control-sm">
+                                            <option value="">Todos los estados</option>
+                                            <option th:each="estado : ${listaEstadosCita}"
+                                                    th:value="${estado.id}"
+                                                    th:text="${estado.nombre}"></option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group mb-2">
+                                        <label for="filtroOdontologo" class="mb-1"><small>Odontólogo:</small></label>
+                                        <select id="filtroOdontologo" class="form-control form-control-sm">
+                                            <option value="">Todos los odontólogos</option>
+                                            <option th:each="odontologo : ${listaOdontologos}"
+                                                    th:value="${odontologo.id}"
+                                                    th:text="${odontologo.nombreCompleto}"></option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12 text-right">
+                                    <button type="button" class="btn btn-primary btn-sm" id="btnAplicarFiltros">
+                                        <i class="fas fa-filter mr-1"></i>Aplicar Filtros
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="btnLimpiarFiltros">
+                                        <i class="fas fa-eraser mr-1"></i>Limpiar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <strong class="mr-2">Leyenda de Estados:</strong>
+                                    <span class="badge badge-warning mr-2"><i class="fas fa-circle"></i> Pendiente</span>
+                                    <span class="badge badge-info mr-2"><i class="fas fa-circle"></i> Confirmada</span>
+                                    <span class="badge badge-success mr-2"><i class="fas fa-circle"></i> Asistió</span>
+                                    <span class="badge badge-danger mr-2"><i class="fas fa-circle"></i> No Asistió</span>
+                                    <span class="badge badge-secondary mr-2"><i class="fas fa-circle"></i> Cancelada</span>
+                                    <span class="badge badge-orange mr-2" style="background-color: #fd7e14;"><i class="fas fa-circle"></i> Reprogramada</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-body table-responsive p-0" style="max-height: 600px;">
+                            <table class="table table-hover table-striped table-head-fixed text-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th width="100">ID</th>
+                                        <th width="150">Fecha y Hora</th>
+                                        <th>Paciente</th>
+                                        <th>Odontólogo</th>
+                                        <th>Procedimiento</th>
+                                        <th width="100">Duración</th>
+                                        <th width="120">Estado</th>
+                                        <th width="200" class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaCitasBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">
+                                            <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                                            <p>Cargando citas...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer clearfix">
+                            <ul class="pagination pagination-sm m-0 float-right" id="paginacionCitas">
+                                <!-- Paginación dinámica -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <!-- FIN TAB: Vista Lista -->
+
+            </div>
+            <!-- FIN Contenido de pestañas -->
+
+        </div>
+    </section>
+
+    <!-- Incluir modales -->
+    <div th:replace="~{modulos/citas/fragmentos :: modalAgendarCita}"></div>
+    <div th:replace="~{modulos/citas/fragmentos :: modalDetalleCita}"></div>
+    <div th:replace="~{modulos/citas/fragmentos :: modalReprogramarCita}"></div>
+    <div th:replace="~{modulos/citas/fragmentos :: modalCancelarCita}"></div>
+    <div th:replace="~{modulos/citas/fragmentos :: modalPlanificarTratamiento}"></div>
+    <!-- Solo incluir el HTML del modal, NO el script (se incluye abajo en page-scripts) -->
+    <div th:replace="~{modulos/citas/modal-tratamiento-avanzado :: modalRegistrarTratamiento}"></div>
+
+</div><!-- #contenido-principal -->
+
+<th:block id="page-scripts">
+    <!-- Moment.js -->
+    <script th:src="@{/adminlte/plugins/moment/moment.min.js}"></script>
+
+    <!-- FullCalendar -->
+    <link rel="stylesheet" th:href="@{/adminlte/plugins/fullcalendar/main.css}">
+    <script th:src="@{/adminlte/plugins/fullcalendar/main.js}"></script>
+    <script th:src="@{/adminlte/plugins/fullcalendar/locales-all.js}"></script>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendario');
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                locale: 'es',
+                initialView: 'timeGridWeek',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: 'Hoy',
+                    month: 'Mes',
+                    week: 'Semana',
+                    day: 'Día'
+                },
+                allDaySlot: false,
+                slotMinTime: '08:00:00',
+                slotMaxTime: '20:00:00',
+                slotDuration: '00:30:00',
+                height: 'auto',
+                navLinks: true,
+                editable: false,
+                selectable: true,
+                selectMirror: true,
+                dayMaxEvents: true,
+                weekends: true,
+
+                // ✅ BLOQUEAR FECHAS PASADAS VISUALMENTE
+                validRange: {
+                    start: moment().format('YYYY-MM-DD') // Solo desde hoy en adelante
+                },
+
+                // ✅ BLOQUEAR SLOTS PASADOS (background events para fechas pasadas)
+                businessHours: {
+                    daysOfWeek: [0, 1, 2, 3, 4, 5, 6], // Todos los días
+                    startTime: '08:00',
+                    endTime: '20:00'
+                },
+
+                // Cargar eventos desde el backend
+                events: function(info, successCallback, failureCallback) {
+                    var odontologoId = document.getElementById('filtroOdontologo').value;
+                    var url = /*[[@{/citas/api/eventos}]]*/ '/citas/api/eventos';
+
+                    var params = new URLSearchParams({
+                        start: info.startStr,
+                        end: info.endStr
+                    });
+
+                    if (odontologoId) {
+                        params.append('odontologoId', odontologoId);
+                    }
+
+                    fetch(url + '?' + params.toString())
+                        .then(response => response.json())
+                        .then(data => successCallback(data))
+                        .catch(error => {
+                            console.error('Error al cargar eventos:', error);
+                            failureCallback(error);
+                        });
+                },
+
+                // Clic en un espacio vacío (agendar cita)
+                dateClick: function(info) {
+                    // Obtener la fecha/hora del clic
+                    var fechaHora = moment(info.date);
+                    var ahora = moment();
+
+                    // ✅ VALIDAR: No permitir agendar en el pasado
+                    if (fechaHora.isBefore(ahora)) {
+                        mostrarAdvertencia('No se pueden agendar citas en fechas u horas pasadas');
+                        return;
+                    }
+
+                    // ✅ VALIDAR: Mínimo 1 hora de anticipación
+                    var unaHoraAdelante = moment().add(1, 'hours');
+                    if (fechaHora.isBefore(unaHoraAdelante)) {
+                        mostrarAdvertencia('Debe agendar con al menos 1 hora de anticipación');
+                        return;
+                    }
+
+                    // Redondear minutos a 0 o 30
+                    var minutos = fechaHora.minutes();
+                    if (minutos > 0 && minutos < 30) {
+                        fechaHora.minutes(30);
+                    } else if (minutos > 30) {
+                        fechaHora.add(1, 'hour').minutes(0);
+                    }
+                    fechaHora.seconds(0);
+
+                    // Formato datetime-local (YYYY-MM-DDTHH:mm)
+                    var fechaHoraFormateada = fechaHora.format('YYYY-MM-DDTHH:mm');
+
+                    // Extraer solo la fecha para el campo de fecha
+                    var fechaSola = fechaHora.format('YYYY-MM-DD');
+
+                    // Rellenar los campos en el formulario de agendar
+                    document.getElementById('fechaHoraInicioAgendar').value = fechaHoraFormateada;
+                    document.getElementById('fechaCitaAgendar').value = fechaSola;
+
+                    // Abrir el modal
+                    $('#modalAgendarCita').modal('show');
+
+                    // Si hay un odontólogo seleccionado, cargar horarios automáticamente
+                    // Si no hay odontólogo, se cargará cuando seleccione uno
+                    const odontologoSelect = document.getElementById('odontologoIdAgendar');
+                    if (odontologoSelect && odontologoSelect.value) {
+                        // Trigger change event to load available time slots
+                        $(odontologoSelect).trigger('change');
+                    }
+                },
+
+                // Clic en un evento existente (ver detalles)
+                eventClick: function(info) {
+                    // Prevenir navegación
+                    info.jsEvent.preventDefault();
+
+                    // Obtener datos del evento
+                    var evento = info.event;
+                    var props = evento.extendedProps;
+
+                    // Rellenar el modal de detalles
+                    document.getElementById('detalleCitaId').value = evento.id;
+                    document.getElementById('detallePaciente').textContent = evento.title;
+                    document.getElementById('detallePacienteId').value = props.pacienteId || '';
+                    document.getElementById('detalleOdontologo').textContent = props.odontologoNombre || 'N/A';
+                    document.getElementById('detalleOdontologoId').value = props.odontologoId || '';
+                    document.getElementById('detalleProcedimientoId').value = props.procedimientoId || '';
+                    document.getElementById('detalleProcedimiento').textContent = props.procedimientoNombre || 'N/A';
+                    document.getElementById('detalleEstado').textContent = props.estadoNombre || 'N/A';
+                    document.getElementById('detalleFechaHoraInicio').textContent = moment(evento.start).format('DD/MM/YYYY HH:mm');
+                    document.getElementById('detalleFechaHoraFin').textContent = moment(evento.end).format('DD/MM/YYYY HH:mm');
+                    document.getElementById('detalleFecha').value = moment(evento.start).format('DD/MM/YYYY');
+                    document.getElementById('detalleHora').value = moment(evento.start).format('HH:mm');
+                    document.getElementById('detalleMotivoConsulta').textContent = props.motivoConsulta || '-';
+                    document.getElementById('detalleNotasInternas').textContent = props.notasInternas || '-';
+
+                    // Actualizar todos los campos hidden de citaId en los formularios del modal
+                    document.querySelectorAll('.citaIdField').forEach(function(field) {
+                        field.value = evento.id;
+                    });
+
+                    // Rellenar el modal de reprogramar con la cita actual
+                    document.getElementById('reprogramarCitaId').value = evento.id;
+                    document.getElementById('reprogramarOdontologoId').value = props.odontologoId || '';
+                    document.getElementById('reprogramarPaciente').textContent = evento.title;
+                    document.getElementById('reprogramarFechaActual').textContent = moment(evento.start).format('DD/MM/YYYY HH:mm');
+
+                    // Rellenar el modal de cancelar
+                    document.getElementById('cancelarCitaId').value = evento.id;
+
+                    // Rellenar el modal de registrar tratamiento
+                    document.getElementById('tratamientoCitaId').value = evento.id;
+                    // También llenar el procedimientoId si existe
+                    if (props.procedimientoId) {
+                        document.getElementById('tratamientoProcedimientoId').value = props.procedimientoId;
+                        // Trigger change para cargar insumos asociados
+                        $('#tratamientoProcedimientoId').trigger('change');
+                    }
+
+                    // Mostrar/ocultar botones según el estado y fecha de la cita
+                    mostrarBotonesSegunEstado(props.estadoNombre, evento.start);
+
+                    // Verificar cadena de citas (si ya generó otra cita)
+                    verificarCadenaDeCitas(evento.id);
+
+                    // Abrir el modal
+                    $('#modalDetalleCita').modal('show');
+                }
+            });
+
+            calendar.render();
+
+            // Verificar si hay un parámetro verCita en la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const verCitaId = urlParams.get('verCita');
+
+            if (verCitaId) {
+                // Buscar la cita en el calendario y abrir el modal de detalle
+                setTimeout(function() {
+                    // Obtener todos los eventos del calendario
+                    const eventos = calendar.getEvents();
+                    const evento = eventos.find(e => e.id === verCitaId);
+
+                    if (evento) {
+                        // Si el evento está en el calendario, abrir su modal
+                        const props = evento.extendedProps;
+                        document.getElementById('detalleCitaId').value = evento.id;
+                        document.getElementById('detallePaciente').textContent = evento.title;
+                        document.getElementById('detallePacienteId').value = props.pacienteId || '';
+                        document.getElementById('detalleOdontologo').textContent = props.odontologoNombre || 'N/A';
+                        document.getElementById('detalleOdontologoId').value = props.odontologoId || '';
+                        document.getElementById('detalleProcedimientoId').value = props.procedimientoId || '';
+                        document.getElementById('detalleProcedimiento').textContent = props.procedimientoNombre || 'N/A';
+                        document.getElementById('detalleEstado').textContent = props.estadoNombre || 'N/A';
+                        document.getElementById('detalleFechaHoraInicio').textContent = moment(evento.start).format('DD/MM/YYYY HH:mm');
+                        document.getElementById('detalleFechaHoraFin').textContent = moment(evento.end).format('DD/MM/YYYY HH:mm');
+                        document.getElementById('detalleFecha').value = moment(evento.start).format('DD/MM/YYYY');
+                        document.getElementById('detalleHora').value = moment(evento.start).format('HH:mm');
+                        document.getElementById('detalleMotivoConsulta').textContent = props.motivoConsulta || '-';
+                        document.getElementById('detalleNotasInternas').textContent = props.notasInternas || '-';
+
+                        document.querySelectorAll('.citaIdField').forEach(function(field) {
+                            field.value = evento.id;
+                        });
+
+                        mostrarBotonesSegunEstado(props.estadoNombre, evento.start);
+
+                        // Verificar cadena de citas (si ya generó otra cita)
+                        verificarCadenaDeCitas(evento.id);
+
+                        $('#modalDetalleCita').modal('show');
+
+                        // Limpiar el parámetro de la URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
+                }, 1000); // Esperar a que se carguen los eventos
+            }
+
+            // Recargar calendario al cambiar el filtro de odontólogo
+            document.getElementById('filtroOdontologo').addEventListener('change', function() {
+                calendar.refetchEvents();
+            });
+        });
+
+        // Función para mostrar/ocultar botones según el estado de la cita
+        function mostrarBotonesSegunEstado(estado, fechaHoraInicio) {
+            var btnConfirmar = document.getElementById('btnConfirmarCita');
+            var btnAsistencia = document.getElementById('divAsistencia');
+            var btnReprogramar = document.getElementById('btnReprogramar');
+            var btnCancelar = document.getElementById('btnCancelar');
+            var btnRegistrarTratamiento = document.getElementById('btnRegistrarTratamiento');
+
+            // Por defecto ocultar todo
+            btnConfirmar.style.display = 'none';
+            btnAsistencia.style.display = 'none';
+            btnReprogramar.style.display = 'inline-block';
+            btnCancelar.style.display = 'inline-block';
+            btnRegistrarTratamiento.style.display = 'none';
+
+            // ⚠️ VALIDACIÓN: Verificar si la cita es futura
+            var esCitaFutura = fechaHoraInicio && moment(fechaHoraInicio).isAfter(moment());
+
+            switch(estado) {
+                case 'PENDIENTE':
+                    btnConfirmar.style.display = 'inline-block';
+                    break;
+                case 'CONFIRMADA':
+                    // ⚠️ IMPORTANTE: Solo mostrar botones de asistencia si la cita NO es futura
+                    if (!esCitaFutura) {
+                        btnAsistencia.style.display = 'block';
+                    } else {
+                        // Cita futura: Solo permitir reprogramar o cancelar
+                        console.log('⚠️ Cita futura detectada. Ocultando botones de asistencia.');
+                    }
+                    break;
+                case 'ASISTIO':
+                    btnReprogramar.style.display = 'none';
+                    btnCancelar.style.display = 'none';
+                    btnRegistrarTratamiento.style.display = 'inline-block';
+                    break;
+                case 'NO_ASISTIO':
+                case 'CANCELADA_PACIENTE':
+                case 'CANCELADA_CLINICA':
+                case 'REPROGRAMADA':
+                    btnConfirmar.style.display = 'none';
+                    btnAsistencia.style.display = 'none';
+                    btnReprogramar.style.display = 'none';
+                    btnCancelar.style.display = 'none';
+                    break;
+            }
+        }
+
+        /**
+         * Verifica si la cita puede registrar tratamientos (cadena de citas).
+         * Si la cita ya generó otra cita, deshabilita el botón y muestra mensaje.
+         */
+        function verificarCadenaDeCitas(citaId) {
+            console.log('🔍 Verificando cadena de citas para Cita #' + citaId);
+
+            var btnRegistrarTratamiento = document.getElementById('btnRegistrarTratamiento');
+            var mensajeCitaGenerada = document.getElementById('mensajeCitaGenerada');
+            var linkCitaGenerada = document.getElementById('linkCitaGenerada');
+
+            // Solo verificar si el botón está visible
+            if (!btnRegistrarTratamiento || btnRegistrarTratamiento.style.display === 'none') {
+                console.log('  ⏭️ Botón no visible, omitiendo verificación');
+                return;
+            }
+
+            // Llamar a la API para verificar si puede registrar tratamientos
+            $.ajax({
+                url: '/citas/api/cita/' + citaId + '/puede-registrar-tratamiento',
+                method: 'GET',
+                success: function(response) {
+                    console.log('  📡 Respuesta API:', response);
+
+                    if (!response.puedeRegistrar && response.citaGeneradaId) {
+                        // Deshabilitar botón y mostrar mensaje
+                        btnRegistrarTratamiento.disabled = true;
+                        btnRegistrarTratamiento.classList.remove('btn-primary');
+                        btnRegistrarTratamiento.classList.add('btn-secondary');
+                        btnRegistrarTratamiento.title = 'Esta cita ya generó un tratamiento';
+
+                        // Mostrar mensaje con link a cita generada
+                        mensajeCitaGenerada.style.display = 'block';
+                        linkCitaGenerada.href = '/citas?verCita=' + response.citaGeneradaId;
+                        linkCitaGenerada.textContent = 'Ver Cita #' + response.citaGeneradaId + ' →';
+
+                        console.log('  ❌ Botón deshabilitado: Cita ya generó tratamiento en Cita #' + response.citaGeneradaId);
+                    } else {
+                        // Habilitar botón (estado normal)
+                        btnRegistrarTratamiento.disabled = false;
+                        btnRegistrarTratamiento.classList.remove('btn-secondary');
+                        btnRegistrarTratamiento.classList.add('btn-primary');
+                        btnRegistrarTratamiento.title = '';
+
+                        // Ocultar mensaje
+                        mensajeCitaGenerada.style.display = 'none';
+
+                        console.log('  ✅ Botón habilitado: Cita puede registrar tratamientos');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('  ⚠️ Error al verificar cadena de citas:', error);
+                    console.error('  Status:', status);
+                    console.error('  Response:', xhr.responseText);
+
+                    // En caso de error, permitir el registro (fail-open)
+                    btnRegistrarTratamiento.disabled = false;
+                    mensajeCitaGenerada.style.display = 'none';
+                }
+            });
+        }
+
+        // Event listeners para botones de acción en modal de detalle
+        document.addEventListener('DOMContentLoaded', function() {
+            // Botón Reprogramar
+            document.getElementById('btnReprogramar').addEventListener('click', function() {
+                $('#modalDetalleCita').modal('hide');
+                setTimeout(function() {
+                    $('#modalReprogramarCita').modal('show');
+                }, 500);
+            });
+
+            // Botón Cancelar
+            document.getElementById('btnCancelar').addEventListener('click', function() {
+                $('#modalDetalleCita').modal('hide');
+                setTimeout(function() {
+                    $('#modalCancelarCita').modal('show');
+                }, 500);
+            });
+
+            // Botón Registrar Tratamiento
+            document.getElementById('btnRegistrarTratamiento').addEventListener('click', function() {
+                $('#modalDetalleCita').modal('hide');
+                setTimeout(function() {
+                    $('#modalRegistrarTratamiento').modal('show');
+                }, 500);
+            });
+        });
+        /*]]>*/
+    </script>
+
+    <!-- Script para lista de citas -->
+    <script>
+    /*<![CDATA[*/
+    $(document).ready(function() {
+        let paginaActual = 0;
+        const tamanoPagina = 15;
+
+        // Cargar citas cuando se activa la pestaña de lista
+        $('#lista-tab').on('shown.bs.tab', function() {
+            cargarCitas(0);
+        });
+
+        // Botón aplicar filtros
+        $('#btnAplicarFiltros').on('click', function() {
+            cargarCitas(0);
+        });
+
+        // Botón limpiar filtros
+        $('#btnLimpiarFiltros').on('click', function() {
+            $('#filtroFechaDesde').val('');
+            $('#filtroFechaHasta').val('');
+            $('#filtroEstado').val('');
+            $('#filtroOdontologo').val('');
+            cargarCitas(0);
+        });
+
+        // Aplicar filtros al presionar Enter en campos de fecha
+        $('#filtroFechaDesde, #filtroFechaHasta').on('keypress', function(e) {
+            if (e.which === 13) {
+                cargarCitas(0);
+            }
+        });
+
+        function cargarCitas(pagina) {
+            const fechaDesde = $('#filtroFechaDesde').val();
+            const fechaHasta = $('#filtroFechaHasta').val();
+            const estadoId = $('#filtroEstado').val();
+            const odontologoId = $('#filtroOdontologo').val();
+
+            $.ajax({
+                url: '/citas/api/lista',
+                method: 'GET',
+                data: {
+                    page: pagina,
+                    size: tamanoPagina,
+                    fechaDesde: fechaDesde,
+                    fechaHasta: fechaHasta,
+                    estadoId: estadoId,
+                    odontologoId: odontologoId
+                },
+                success: function(response) {
+                    if (response.error) {
+                        mostrarError(response.mensaje);
+                        return;
+                    }
+
+                    paginaActual = response.currentPage;
+                    renderizarTabla(response.citas);
+                    renderizarPaginacion(response.currentPage, response.totalPages);
+                },
+                error: function(xhr, status, error) {
+                    mostrarError('Error al cargar las citas: ' + error);
+                }
+            });
+        }
+
+        function renderizarTabla(citas) {
+            const tbody = $('#tablaCitasBody');
+            tbody.empty();
+
+            if (citas.length === 0) {
+                tbody.append(`
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p>No se encontraron citas</p>
+                        </td>
+                    </tr>
+                `);
+                return;
+            }
+
+            citas.forEach(function(cita) {
+                const fechaHora = new Date(cita.fechaHoraInicio);
+                const fechaHoraFin = new Date(cita.fechaHoraFin);
+                const fechaFormateada = fechaHora.toLocaleDateString('es-PE');
+                const horaFormateada = fechaHora.toLocaleTimeString('es-PE', {hour: '2-digit', minute: '2-digit'});
+                const estadoBadge = obtenerBadgeEstado(cita.estadoNombre, cita.estadoColor);
+
+                // Serializar datos de la cita para los botones
+                const citaData = encodeURIComponent(JSON.stringify(cita));
+
+                // Determinar qué botones mostrar según el estado
+                let botonesAccion = `
+                    <button class="btn btn-sm btn-info btn-ver-cita" data-cita='${citaData}' title="Ver Detalle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                `;
+
+                // Mostrar botones de reprogramar y cancelar solo si la cita NO está en estado ASISTIO, NO_ASISTIO, CANCELADA o REPROGRAMADA
+                const estadosNoModificables = ['ASISTIO', 'NO_ASISTIO', 'CANCELADA_PACIENTE', 'CANCELADA_CLINICA', 'REPROGRAMADA'];
+                if (!estadosNoModificables.includes(cita.estadoNombre)) {
+                    botonesAccion += `
+                        <button class="btn btn-sm btn-warning btn-reprogramar-cita" data-cita='${citaData}'
+                                data-permiso="EDITAR_CITAS" data-accion-descripcion="reprogramar citas" title="Reprogramar">
+                            <i class="fas fa-calendar"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger btn-cancelar-cita" data-cita='${citaData}'
+                                data-permiso="EDITAR_CITAS" data-accion-descripcion="cancelar citas" title="Cancelar">
+                            <i class="fas fa-ban"></i>
+                        </button>
+                    `;
+                }
+
+                const fila = `
+                    <tr>
+                        <td><b>#${cita.id}</b></td>
+                        <td>
+                            <span class="text-primary">${fechaFormateada}</span><br>
+                            <small class="text-muted">${horaFormateada}</small>
+                        </td>
+                        <td>${cita.pacienteNombre}</td>
+                        <td>${cita.odontologoNombre}</td>
+                        <td>${cita.procedimientoNombre}</td>
+                        <td><span class="badge badge-secondary">${cita.duracion} min</span></td>
+                        <td>${estadoBadge}</td>
+                        <td class="text-center">
+                            ${botonesAccion}
+                        </td>
+                    </tr>
+                `;
+                tbody.append(fila);
+            });
+
+            // Agregar eventos a los botones
+            $('.btn-ver-cita').off('click').on('click', function() {
+                const cita = JSON.parse(decodeURIComponent($(this).data('cita')));
+                abrirModalDetalle(cita);
+            });
+
+            $('.btn-reprogramar-cita').off('click').on('click', function() {
+                const cita = JSON.parse(decodeURIComponent($(this).data('cita')));
+                abrirModalDetalle(cita);
+                // Dar tiempo para que se llenen los datos del modal de detalle
+                setTimeout(function() {
+                    $('#btnReprogramar').click();
+                }, 300);
+            });
+
+            $('.btn-cancelar-cita').off('click').on('click', function() {
+                const cita = JSON.parse(decodeURIComponent($(this).data('cita')));
+                abrirModalDetalle(cita);
+                // Dar tiempo para que se llenen los datos del modal de detalle
+                setTimeout(function() {
+                    $('#btnCancelar').click();
+                }, 300);
+            });
+        }
+
+        function abrirModalDetalle(cita) {
+            // Rellenar el modal de detalles
+            $('#detalleCitaId').val(cita.id);
+            $('#detallePaciente').text(cita.pacienteNombre);
+            $('#detalleOdontologo').text(cita.odontologoNombre);
+            $('#detalleOdontologoId').val(cita.odontologoId || '');
+            $('#detalleProcedimientoId').val(cita.procedimientoId || '');
+            $('#detalleProcedimiento').text(cita.procedimientoNombre);
+            $('#detalleEstado').text(cita.estadoNombre);
+
+            // Formatear fechas
+            const inicio = new Date(cita.fechaHoraInicio);
+            const fin = new Date(cita.fechaHoraFin);
+            $('#detalleFechaHoraInicio').text(moment(inicio).format('DD/MM/YYYY HH:mm'));
+            $('#detalleFechaHoraFin').text(moment(fin).format('DD/MM/YYYY HH:mm'));
+            $('#detalleFecha').val(moment(inicio).format('DD/MM/YYYY'));
+            $('#detalleHora').val(moment(inicio).format('HH:mm'));
+
+            $('#detalleMotivoConsulta').text(cita.motivoConsulta || '-');
+            $('#detalleNotasInternas').text(cita.notasInternas || '-');
+
+            // Actualizar campos hidden
+            $('.citaIdField').val(cita.id);
+            $('#reprogramarCitaId').val(cita.id);
+            $('#cancelarCitaId').val(cita.id);
+            $('#tratamientoCitaId').val(cita.id);
+
+            // Mostrar/ocultar botones según estado y fecha de la cita
+            mostrarBotonesSegunEstado(cita.estadoNombre, inicio);
+
+            // Cargar tratamiento planificado asociado
+            cargarTratamientoPlanificado(cita.id);
+
+            // Abrir modal
+            $('#modalDetalleCita').modal('show');
+        }
+
+        function cargarTratamientoPlanificado(citaId) {
+            // Limpiar y ocultar por defecto
+            $('#seccionTratamientoPlanificado').hide();
+            $('#infoTratamientoPlanificado').html('');
+
+            // Consultar tratamiento planificado
+            $.ajax({
+                url: `/citas/api/tratamiento-planificado/${citaId}`,
+                method: 'GET',
+                success: function(data) {
+                    if (data.existe) {
+                        const html = `
+                            <p class="mb-1"><strong>Procedimiento:</strong> ${data.procedimiento}</p>
+                            <p class="mb-1"><strong>Piezas Dentales:</strong> ${data.piezasDentales}</p>
+                            <p class="mb-1"><strong>Estado:</strong> <span class="badge badge-info">${data.estado}</span></p>
+                            ${data.descripcion ? `<p class="mb-0"><strong>Descripción:</strong> ${data.descripcion}</p>` : ''}
+                        `;
+                        $('#infoTratamientoPlanificado').html(html);
+                        $('#seccionTratamientoPlanificado').show();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.log('No se pudo cargar el tratamiento planificado:', error);
+                }
+            });
+        }
+
+        function renderizarPaginacion(paginaActual, totalPaginas) {
+            const paginacion = $('#paginacionCitas');
+            paginacion.empty();
+
+            if (totalPaginas <= 1) return;
+
+            // Botón anterior
+            const anteriorDisabled = paginaActual === 0 ? 'disabled' : '';
+            paginacion.append(`
+                <li class="page-item ${anteriorDisabled}">
+                    <a class="page-link" href="#" data-pagina="${paginaActual - 1}">«</a>
+                </li>
+            `);
+
+            // Números de página
+            const inicio = Math.max(0, paginaActual - 2);
+            const fin = Math.min(totalPaginas, inicio + 5);
+
+            for (let i = inicio; i < fin; i++) {
+                const activo = i === paginaActual ? 'active' : '';
+                paginacion.append(`
+                    <li class="page-item ${activo}">
+                        <a class="page-link" href="#" data-pagina="${i}">${i + 1}</a>
+                    </li>
+                `);
+            }
+
+            // Botón siguiente
+            const siguienteDisabled = paginaActual === totalPaginas - 1 ? 'disabled' : '';
+            paginacion.append(`
+                <li class="page-item ${siguienteDisabled}">
+                    <a class="page-link" href="#" data-pagina="${paginaActual + 1}">»</a>
+                </li>
+            `);
+
+            // Eventos de paginación
+            $('.page-link').off('click').on('click', function(e) {
+                e.preventDefault();
+                const pagina = $(this).data('pagina');
+                if (pagina !== undefined && pagina >= 0 && pagina < totalPaginas) {
+                    cargarCitas(pagina);
+                }
+            });
+        }
+
+        function obtenerBadgeEstado(estado, color) {
+            const etiquetas = {
+                'PENDIENTE': 'Pendiente',
+                'CONFIRMADA': 'Confirmada',
+                'ASISTIO': 'Asistió',
+                'NO_ASISTIO': 'No Asistió',
+                'CANCELADA_PACIENTE': 'Cancelada',
+                'CANCELADA_CLINICA': 'Cancelada',
+                'REPROGRAMADA': 'Reprogramada'
+            };
+
+            return `<span class="badge" style="background-color: ${color}; color: white;">${etiquetas[estado] || estado}</span>`;
+        }
+
+        function mostrarError(mensaje) {
+            $('#tablaCitasBody').html(`
+                <tr>
+                    <td colspan="8" class="text-center text-danger py-4">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                        <p>${mensaje}</p>
+                    </td>
+                </tr>
+            `);
+        }
+    });
+    /*]]>*/
+    </script>
+
+    <!-- Incluir script de validaciones de citas -->
+    <div th:replace="~{modulos/citas/fragmentos :: scriptValidacionesCita}"></div>
+
+    <!-- Incluir script del modal de tratamiento (DESPUÉS de jQuery) -->
+    <th:block th:replace="~{modulos/citas/modal-tratamiento-avanzado :: scriptModalTratamiento}"></th:block>
+</th:block>
+
+</body>
+</html>

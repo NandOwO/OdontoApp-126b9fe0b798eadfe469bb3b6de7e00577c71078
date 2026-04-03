@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(titulo, contenido)">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <title th:text="'OdontoApp | ' + ${titulo}">OdontoApp</title>
+    <!-- Google Font: Source Sans Pro -->
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" th:href="@{/adminlte/plugins/fontawesome-free/css/all.min.css}">
+    <!-- Theme style -->
+    <link rel="stylesheet" th:href="@{/adminlte/dist/css/adminlte.min.css}">
+    <link rel="stylesheet" th:href="@{/css/custom-styles.css}">
+    <!-- Sistema de Horarios de Citas -->
+    <link rel="stylesheet" th:href="@{/css/horarios-citas.css}">
+    <!-- Selector Visual de Horarios -->
+    <link rel="stylesheet" th:href="@{/css/selector-horarios.css}">
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <!-- Chatbot IA -->
+    <link rel="stylesheet" th:href="@{/css/chatbot.css}">
+
+</head>
+
+<body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+        <!-- Header -->
+        <div th:replace="~{layout/fragmentos :: header}"></div>
+        <!-- Sidebar -->
+        <div th:replace="~{layout/fragmentos :: sidebar}"></div>
+
+        <!-- Contenido Principal -->
+        <div class="content-wrapper">
+            <!-- Aquí se insertará el contenido que nos pasen -->
+            <div th:replace="${contenido}"></div>
+        </div>
+
+        <!-- Footer -->
+        <div th:replace="~{layout/fragmentos :: footer}"></div>
+    </div>
+    <!-- SCRIPTS -->
+    <!-- jQuery -->
+    <script th:src="@{/adminlte/plugins/jquery/jquery.min.js}"></script>
+    <!-- Select2 -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- Bootstrap 4 -->
+    <script th:src="@{/adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js}"></script>
+    <!-- AdminLTE App -->
+    <script th:src="@{/adminlte/dist/js/adminlte.min.js}"></script>
+
+    <!-- SweetAlert2 - Versión específica para mayor estabilidad -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Custom Utilities -->
+    <script th:src="@{/js/notificaciones.js}"></script>
+    <!-- Validaciones de Input -->
+    <script th:src="@{/js/validaciones-input.js}"></script>
+    <!-- Sistema de Horarios de Citas -->
+    <script th:src="@{/js/horarios-citas.js}"></script>
+    <!-- Selector Visual de Horarios -->
+    <script th:src="@{/js/selector-horarios.js}"></script>
+
+    <!-- Sistema global de loading para botones -->
+    <script th:src="@{/js/button-loading.js}"></script>
+
+    <!-- Sistema de Validación de Permisos Granulares -->
+    <script th:src="@{/js/permisos-validator.js}"></script>
+
+    <!-- Chatbot IA (solo para pacientes) -->
+    <script th:if="${#authorization.expression('hasAuthority(''VER_MI_PERFIL_PANEL_PACIENTE'')')}"
+        th:src="@{/js/chatbot.js}"></script>
+
+    <!-- Mostrar alertas flash de Spring Boot -->
+    <script th:inline="javascript">
+        $(document).ready(function () {
+            const success = /*[[${success}]]*/ null;
+            const error = /*[[${error}]]*/ null;
+            const warning = /*[[${warning}]]*/ null;
+            const info = /*[[${info}]]*/ null;
+
+            if (success) {
+                mostrarExito(success);
+            }
+            if (error) {
+                mostrarError(error);
+            }
+            if (warning) {
+                mostrarAdvertencia(warning);
+            }
+            if (info) {
+                mostrarInfo(info);
+            }
+        });
+    </script>
+
+    <!-- instruccion para thymeleaf -->
+    <th:block th:replace="${scripts} ?: ~{}"></th:block>
+</body>
+
+</html>

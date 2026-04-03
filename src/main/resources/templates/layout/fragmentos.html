@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<body>
+    <!-- Header -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light" th:fragment="header">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" data-widget="pushmenu" href="#" role="button">
+                    <i class="fas fa-bars"></i>
+                </a>
+            </li>
+        </ul>
+
+        <ul class="navbar-nav ml-auto">
+            <!-- Dropdown de Rol Activo (solo para usuarios con múltiples roles) -->
+            <li class="nav-item dropdown" th:if="${session.totalRoles != null and session.totalRoles > 1}">
+                <a class="nav-link dropdown-toggle" href="#" id="rolDropdown" role="button" data-toggle="dropdown"
+                    aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-user-tag"></i>
+                    <span th:text="${session.rolActivo != null ? session.rolActivo : 'Mi Rol'}">Mi Rol</span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="rolDropdown">
+                    <div class="dropdown-item-text text-sm">
+                        <strong>Rol Activo:</strong>
+                        <span class="badge badge-primary"
+                            th:text="${session.rolActivo != null ? session.rolActivo : 'No seleccionado'}">
+                            No seleccionado
+                        </span>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a th:href="@{/seleccionar-rol/cambiar}" class="dropdown-item">
+                        <i class="fas fa-exchange-alt mr-2"></i> Cambiar de Rol
+                    </a>
+                </div>
+            </li>
+            <!-- Logout -->
+            <li class="nav-item">
+                <form th:action="@{/logout}" method="post" id="logoutForm"></form>
+                <a class="nav-link" href="#" role="button" onclick="document.getElementById('logoutForm').submit();">
+                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4" th:fragment="sidebar">
+        <!-- Logo con redirección condicional según rol activo -->
+        <a th:href="${session.rolActivo == 'PACIENTE' ? '/paciente/dashboard' : '/dashboard'}" class="brand-link">
+            <img th:src="@{/adminlte/dist/img/AdminLTELogo.png}" alt="OdontoApp Logo"
+                class="brand-image img-circle elevation-3" style="opacity: .8">
+            <span class="brand-text font-weight-light">OdontoApp</span>
+        </a>
+
+        <div class="sidebar">
+            <!-- Panel de usuario -->
+            <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+                <div class="image">
+                    <img th:src="@{/adminlte/dist/img/avatar5.png}" class="img-circle elevation-2" alt="User Image">
+                </div>
+                <div class="info">
+                    <a href="#" class="d-block dropdown-toggle" data-toggle="dropdown" aria-haspopup="true"
+                        aria-expanded="false"
+                        th:text="${usuarioLogueado != null ? usuarioLogueado.nombreCompleto : 'Invitado'}"></a>
+                    <div class="dropdown-menu">
+                        <a th:href="@{/usuarios/cambiar-password}" class="dropdown-item">
+                            <i class="fas fa-key mr-2"></i> Cambiar Contraseña
+                        </a>
+                    </div>
+                    <br>
+                </div>
+            </div>
+
+            <!-- Menú lateral -->
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu"
+                    data-accordion="false">
+
+                    <!-- ======================= MENÚ PARA PACIENTES ======================= -->
+                    <th:block th:if="${session.rolActivo == 'PACIENTE'}">
+                        <!-- Dashboard del Paciente -->
+                        <li class="nav-item">
+                            <a th:href="@{/paciente/dashboard}" class="nav-link">
+                                <i class="nav-icon fas fa-home"></i>
+                                <p>Inicio</p>
+                            </a>
+                        </li>
+
+                        <!-- Mis Citas -->
+                        <li class="nav-item">
+                            <a th:href="@{/paciente/citas}" class="nav-link">
+                                <i class="nav-icon fas fa-calendar-alt"></i>
+                                <p>Mis Citas</p>
+                            </a>
+                        </li>
+
+                        <!-- Mi Perfil -->
+                        <li class="nav-item">
+                            <a th:href="@{/paciente/perfil}" class="nav-link">
+                                <i class="nav-icon fas fa-user-circle"></i>
+                                <p>Mi Perfil</p>
+                            </a>
+                        </li>
+                    </th:block>
+
+                    <!-- ======================= MENÚ PARA STAFF ======================= -->
+                    <th:block th:if="${session.rolActivo != null and session.rolActivo != 'PACIENTE'}">
+                        <!-- DASHBOARD -->
+                        <li class="nav-item">
+                            <a th:href="@{/dashboard}" class="nav-link">
+                                <i class="nav-icon fas fa-tachometer-alt"></i>
+                                <p>Dashboard</p>
+                            </a>
+                        </li>
+                    </th:block>
+
+                    <!-- ADMINISTRACIÓN - Permisos granulares -->
+                    <li class="nav-header"
+                        sec:authorize="hasAnyAuthority('VER_LISTA_USUARIOS', 'VER_LISTA_ROLES', 'VER_REGISTROS_ELIMINADOS')">
+                        ADMINISTRACIÓN
+                    </li>
+
+                    <li class="nav-item" sec:authorize="hasAuthority('VER_LISTA_USUARIOS')">
+                        <a th:href="@{/usuarios}" class="nav-link">
+                            <i class="nav-icon fas fa-users"></i>
+                            <p>Usuarios</p>
+                        </a>
+                    </li>
+
+                    <li class="nav-item" sec:authorize="hasAuthority('VER_LISTA_ROLES')">
+                        <a th:href="@{/roles}" class="nav-link">
+                            <i class="nav-icon fas fa-user-shield"></i>
+                            <p>Roles y Permisos</p>
+                        </a>
+                    </li>
+
+                    <li class="nav-item"
+                        sec:authorize="hasAnyAuthority('RESTAURAR_USUARIOS', 'RESTAURAR_PACIENTES', 'RESTAURAR_ROLES', 'RESTAURAR_SERVICIOS', 'RESTAURAR_INVENTARIO')">
+                        <a th:href="@{/administracion/eliminados}" class="nav-link">
+                            <i class="nav-icon fas fa-trash-restore text-warning"></i>
+                            <p>Registros Eliminados</p>
+                        </a>
+                    </li>
+
+                    <!-- GESTIÓN CLÍNICA - Permisos granulares (SOLO PARA STAFF, NO PACIENTES) -->
+                    <li class="nav-header" th:if="${session.rolActivo != 'PACIENTE'}"
+                        sec:authorize="hasAnyAuthority('VER_LISTA_PACIENTES', 'VER_LISTA_CITAS', 'VER_LISTA_SERVICIOS')">
+                        GESTIÓN CLÍNICA
+                    </li>
+
+                    <!-- Pacientes - Permiso granular -->
+                    <li class="nav-item" sec:authorize="hasAuthority('VER_LISTA_PACIENTES')">
+                        <a th:href="@{/pacientes}" class="nav-link">
+                            <i class="nav-icon fas fa-procedures"></i>
+                            <p>Pacientes</p>
+                        </a>
+                    </li>
+
+                    <!-- Agenda de Citas - Permiso granular (SOLO STAFF) -->
+                    <li class="nav-item" th:if="${session.rolActivo != 'PACIENTE'}"
+                        sec:authorize="hasAuthority('VER_LISTA_CITAS')">
+                        <a th:href="@{/citas}" class="nav-link">
+                            <i class="nav-icon fas fa-calendar-alt"></i>
+                            <p>Agenda de Citas</p>
+                        </a>
+                    </li>
+
+                    <!-- Servicios - Permiso granular -->
+                    <li class="nav-item" sec:authorize="hasAuthority('VER_LISTA_SERVICIOS')">
+                        <a th:href="@{/servicios}" class="nav-link">
+                            <i class="nav-icon fas fa-clipboard-list"></i>
+                            <p>Servicios</p>
+                        </a>
+                    </li>
+
+                    <!-- INVENTARIO - Permiso granular -->
+                    <li class="nav-header" sec:authorize="hasAuthority('VER_LISTA_INVENTARIO')">
+                        INVENTARIO
+                    </li>
+
+                    <!-- Stock e Insumos - Permiso granular -->
+                    <li class="nav-item" sec:authorize="hasAuthority('VER_LISTA_INVENTARIO')">
+                        <a th:href="@{/insumos}" class="nav-link">
+                            <i class="nav-icon fas fa-boxes"></i>
+                            <p>Stock e Insumos</p>
+                        </a>
+                    </li>
+
+                    <!-- FACTURACIÓN - Permiso granular (SOLO STAFF) -->
+                    <li class="nav-header" th:if="${session.rolActivo != 'PACIENTE'}"
+                        sec:authorize="hasAuthority('VER_LISTA_FACTURACION')">
+                        FACTURACIÓN
+                    </li>
+
+                    <li class="nav-item has-treeview" th:if="${session.rolActivo != 'PACIENTE'}"
+                        sec:authorize="hasAuthority('VER_LISTA_FACTURACION')">
+                        <a href="#" class="nav-link">
+                            <i class="nav-icon fas fa-file-invoice-dollar"></i>
+                            <p>
+                                Comprobantes
+                                <i class="fas fa-angle-left right"></i>
+                            </p>
+                        </a>
+                        <ul class="nav nav-treeview">
+                            <li class="nav-item">
+                                <a th:href="@{/facturacion}" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Ver Comprobantes</p>
+                                </a>
+                            </li>
+                            <li class="nav-item" sec:authorize="hasAuthority('CREAR_FACTURACION')">
+                                <a th:href="@{/facturacion/pos}" class="nav-link">
+                                    <i class="far fa-circle nav-icon"></i>
+                                    <p>Punto de Venta (POS)</p>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+                </li>
+
+                <!-- REPORTES - Solo ADMIN -->
+                <li class="nav-header" sec:authorize="hasRole('ADMIN')">
+                    REPORTES
+                </li>
+                <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                    <a th:href="@{/reportes}" class="nav-link">
+                        <i class="nav-icon fas fa-chart-line"></i>
+                        <p>Reportes y Estadísticas</p>
+                    </a>
+                </li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Footer -->
+    <footer class="main-footer" th:fragment="footer">
+        <strong>Copyright &copy; 2025 <a href="#">OdontoApp</a>.</strong>
+        Todos los derechos reservados.
+    </footer>
+</body>
+
+</html>

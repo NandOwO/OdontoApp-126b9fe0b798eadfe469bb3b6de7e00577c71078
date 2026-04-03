@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+    th:replace="~{layout/base :: layout(titulo='Formulario de Usuario', contenido=~{::#contenido-principal}, scripts=~{::#page-scripts})}">
+
+<body>
+    <div id="contenido-principal">
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 th:if="${usuario.id == null}">Nuevo Usuario</h1>
+                        <h1 th:unless="${usuario.id == null}">Editar Usuario</h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <a th:href="@{/usuarios}" class="btn btn-outline-secondary float-sm-right">
+                            <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content">
+            <div class="container-fluid">
+                <div class="card card-primary card-outline shadow-sm">
+                    <div class="card-header">
+                        <h3 class="card-title">Datos del Usuario</h3>
+                    </div>
+
+                    <form th:action="@{/usuarios/guardar}" th:object="${usuario}" method="post" id="usuarioForm"
+                        data-auto-loading="true">
+                        <!-- Campo oculto para el ID (para edición) -->
+                        <input type="hidden" th:field="*{id}" />
+
+                        <div class="card-body">
+
+                            <!-- ALERTA INFORMATIVA PARA MODO EDICIÓN -->
+                            <div th:if="${usuario.id != null}" class="alert alert-info alert-dismissible fade show"
+                                role="alert">
+                                <h5><i class="icon fas fa-info-circle"></i> Modo Edición</h5>
+                                <strong>Campos editables:</strong> Email, Teléfono, Dirección, Roles y Horarios.<br>
+                                <strong>Campos protegidos:</strong> Tipo de documento, Número de documento, Nombre
+                                completo, Fecha de nacimiento y Fecha de contratación.
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+
+                            <!-- ALERTA DE VALIDACIÓN GENERAL -->
+                            <div th:if="${#fields.hasGlobalErrors()}"
+                                class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <strong><i class="icon fas fa-ban"></i> Error Global:</strong>
+                                <ul>
+                                    <li th:each="err : ${#fields.globalErrors()}" th:text="${err}"></li>
+                                </ul>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
+                                        aria-hidden="true">&times;</span></button>
+                            </div>
+                            <div th:if="${#fields.hasErrors('*') && !#fields.hasGlobalErrors()}"
+                                class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <strong><i class="icon fas fa-ban"></i> Error de Validaci&oacute;n:</strong>
+                                Por favor, corrige los campos marcados.
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
+                                        aria-hidden="true">&times;</span></button>
+                            </div>
+
+
+                            <!-- ALERTA DE ERROR CUSTOM (Duplicados, etc) -->
+                            <div th:if="${errorValidacion}" class="alert alert-danger alert-dismissible fade show"
+                                role="alert">
+                                <strong><i class="icon fas fa-ban"></i> Error:</strong>
+                                <span th:text="${errorValidacion}"></span>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
+                                        aria-hidden="true">&times;</span></button>
+                            </div>
+
+                            <!-- ALERTA DE RESTAURACIÓN DE CUENTA -->
+                            <div th:if="${errorRestauracion}" class="alert alert-warning alert-dismissible fade show"
+                                role="alert">
+                                <strong><i class="icon fas fa-exclamation-triangle"></i> Atenci&oacute;n:</strong>
+                                <span th:text="${errorRestauracion}"></span>
+                                <strong> ¿Desea restablecer esta cuenta?</strong>
+                                <a th:if="${idUsuarioParaRestaurar}"
+                                    th:href="@{/usuarios/restablecer/{id}(id=${idUsuarioParaRestaurar})}"
+                                    class="btn btn-sm btn-success ml-2"
+                                    onclick="return confirm('¿Estás seguro de restablecer este usuario? Se enviará una nueva contraseña temporal a su email.');">
+                                    <i class="fas fa-undo"></i> S&iacute;, Restablecer Usuario
+                                </a>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span
+                                        aria-hidden="true">&times;</span></button>
+                            </div>
+
+                            <!-- DATOS BÁSICOS -->
+                            <h5 class="mt-4 mb-3 text-primary"><i class="fas fa-user-circle mr-2"></i>Informaci&oacute;n
+                                Personal</h5>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="tipoDocumentoId">Tipo Documento <span
+                                                class="text-danger">*</span></label>
+                                        <!-- Hidden field para enviar el valor en modo edición -->
+                                        <input th:if="${usuario.id != null}" type="hidden"
+                                            th:field="*{tipoDocumentoId}" />
+                                        <select class="form-control" th:field="*{tipoDocumentoId}" id="tipoDocumentoId"
+                                            th:disabled="${usuario.id != null}" required
+                                            th:classappend="${#fields.hasErrors('tipoDocumentoId')} ? 'is-invalid' : ''">
+                                            <option value="">Seleccione...</option>
+                                            <option th:each="tipo : ${tiposDocumento}" th:value="${tipo.id}"
+                                                th:text="${tipo.nombre}"
+                                                th:selected="${usuario.tipoDocumentoId != null && usuario.tipoDocumentoId == tipo.id}">
+                                            </option>
+                                        </select>
+                                        <div th:if="${#fields.hasErrors('tipoDocumentoId')}" class="invalid-feedback"
+                                            th:errors="*{tipoDocumentoId}"></div>
+                                        <small th:if="${usuario.id != null}" class="form-text text-muted">
+                                            <i class="fas fa-lock"></i> Campo no editable
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="numeroDocumento">N&uacute;mero Documento <span
+                                                class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" th:field="*{numeroDocumento}"
+                                                id="numeroDocumento" placeholder="Número de Documento"
+                                                th:readonly="${usuario.id != null}" maxlength="8" required
+                                                th:classappend="${#fields.hasErrors('numeroDocumento')} ? 'is-invalid' : ''">
+                                            <div class="input-group-append">
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                    id="btn-buscar-dni" th:disabled="${usuario.id != null}">
+                                                    <i class="fas fa-search"></i> Buscar
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <small id="doc-error" class="form-text text-danger"></small>
+                                        <div th:if="${#fields.hasErrors('numeroDocumento')}"
+                                            class="invalid-feedback d-block" th:errors="*{numeroDocumento}"></div>
+                                        <small th:if="${usuario.id != null}" class="form-text text-muted">
+                                            <i class="fas fa-lock"></i> Campo no editable
+                                        </small>
+                                        <small th:if="${usuario.id == null}" class="form-text text-muted">
+                                            Ingrese los digitos necesarios
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="nombreCompleto">Nombre Completo <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" th:field="*{nombreCompleto}"
+                                            id="nombreCompleto" placeholder="Busque DNI para autocompletar" readonly
+                                            data-validar="nombre"
+                                            th:classappend="${#fields.hasErrors('nombreCompleto')} ? 'is-invalid' : ''"
+                                            required>
+                                        <div th:if="${#fields.hasErrors('nombreCompleto')}" class="invalid-feedback"
+                                            th:errors="*{nombreCompleto}"></div>
+                                        <small class="form-text text-info">
+                                            <i class="fas fa-info-circle"></i> Se autocompleta al buscar DNI
+                                        </small>
+                                        <small th:if="${usuario.id != null}" class="form-text text-muted">
+                                            <i class="fas fa-lock"></i> Campo no editable (obtenido de RENIEC)
+                                        </small>
+                                        <small th:if="${usuario.id == null}" class="form-text text-muted">
+                                            Solo letras y espacios - Se autocompleta con DNI
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="email">Email</label>
+                                        <input type="email" class="form-control" id="email" th:field="*{email}"
+                                            placeholder="correo@ejemplo.com" required
+                                            th:readonly="${usuario.id != null}"
+                                            th:classappend="${#fields.hasErrors('email')} ? 'is-invalid' : ''">
+                                        <div th:if="${#fields.hasErrors('email')}" class="invalid-feedback"
+                                            th:errors="*{email}"></div>
+                                        <small th:if="${usuario.id != null}" class="form-text text-muted">
+                                            <i class="fas fa-lock"></i> Campo no editable - El email no puede ser
+                                            modificado
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="telefono">Tel&eacute;fono</label>
+                                        <input type="text" class="form-control" id="telefono" th:field="*{telefono}"
+                                            placeholder="987654321" data-validar="telefono" maxlength="9"
+                                            th:classappend="${#fields.hasErrors('telefono')} ? 'is-invalid' : ''">
+                                        <div th:if="${#fields.hasErrors('telefono')}" class="invalid-feedback"
+                                            th:errors="*{telefono}"></div>
+                                        <small class="form-text text-success">
+                                            <i class="fas fa-edit"></i> Campo editable - 9 dígitos
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="fechaNacimiento">Fecha de Nacimiento <span
+                                                class="text-danger">*</span></label>
+                                        <!-- Hidden field para enviar el valor en modo edición con formato ISO -->
+                                        <input th:if="${usuario.id != null}" type="hidden" name="fechaNacimiento"
+                                            th:value="${usuario.fechaNacimiento != null ? usuario.fechaNacimiento : ''}" />
+                                        <!-- Input visible en modo edición (texto plano) -->
+                                        <input th:if="${usuario.id != null}" type="text" class="form-control bg-light"
+                                            th:value="${usuario.fechaNacimiento != null ? #temporals.format(usuario.fechaNacimiento, 'dd/MM/yyyy') : ''}"
+                                            readonly />
+                                        <!-- Input normal en modo creación -->
+                                        <input th:if="${usuario.id == null}" type="date" class="form-control"
+                                            id="fechaNacimiento" th:field="*{fechaNacimiento}"
+                                            data-validar="edad-minima" data-edad-minima="18" required
+                                            th:classappend="${#fields.hasErrors('fechaNacimiento')} ? 'is-invalid' : ''">
+                                        <div th:if="${#fields.hasErrors('fechaNacimiento')}" class="invalid-feedback"
+                                            th:errors="*{fechaNacimiento}"></div>
+                                        <small th:if="${usuario.id != null}" class="form-text text-muted">
+                                            <i class="fas fa-lock"></i> Campo no editable
+                                        </small>
+                                        <small th:if="${usuario.id == null}" class="form-text text-muted">
+                                            Debe ser mayor de 18 años
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="fechaContratacion">Fecha Contrataci&oacute;n <span
+                                                class="text-danger">*</span></label>
+                                        <!-- Hidden field para enviar el valor en modo edición con formato ISO -->
+                                        <input th:if="${usuario.id != null}" type="hidden" name="fechaContratacion"
+                                            th:value="${usuario.fechaContratacion != null ? usuario.fechaContratacion : ''}" />
+                                        <!-- Input visible en modo edición (texto plano) -->
+                                        <input th:if="${usuario.id != null}" type="text" class="form-control bg-light"
+                                            th:value="${usuario.fechaContratacion != null ? #temporals.format(usuario.fechaContratacion, 'dd/MM/yyyy') : ''}"
+                                            readonly />
+                                        <!-- Input normal en modo creación -->
+                                        <input th:if="${usuario.id == null}" type="date" class="form-control"
+                                            id="fechaContratacion" th:field="*{fechaContratacion}"
+                                            data-validar="fecha-no-futura" required
+                                            th:classappend="${#fields.hasErrors('fechaContratacion')} ? 'is-invalid' : ''">
+                                        <div th:if="${#fields.hasErrors('fechaContratacion')}" class="invalid-feedback"
+                                            th:errors="*{fechaContratacion}"></div>
+                                        <small th:if="${usuario.id != null}" class="form-text text-muted">
+                                            <i class="fas fa-lock"></i> Campo no editable
+                                        </small>
+                                        <small th:if="${usuario.id == null}" class="form-text text-muted">
+                                            No puede ser futura
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group" id="grupoFechaVigencia">
+                                        <label for="fechaVigencia">Fecha de Vigencia <span class="text-danger"
+                                                id="vigenciaRequired">*</span></label>
+
+                                        <!-- En modo edición: campo hidden para binding + campo texto readonly para mostrar -->
+                                        <input th:if="${usuario.id != null}" type="hidden" id="fechaVigenciaHidden"
+                                            th:field="*{fechaVigencia}" />
+                                        <input th:if="${usuario.id != null}" type="text" class="form-control"
+                                            id="fechaVigenciaDisplay"
+                                            th:value="${usuario.fechaVigencia != null ? #temporals.format(usuario.fechaVigencia, 'dd/MM/yyyy') : 'No establecida'}"
+                                            readonly style="background-color: #e9ecef;" />
+
+                                        <!-- En modo creación: input date normal -->
+                                        <input th:if="${usuario.id == null}" type="date" class="form-control"
+                                            id="fechaVigencia" th:field="*{fechaVigencia}"
+                                            data-validar="fecha-no-pasada"
+                                            th:classappend="${#fields.hasErrors('fechaVigencia')} ? 'is-invalid' : ''">
+
+                                        <div th:if="${#fields.hasErrors('fechaVigencia')}" class="invalid-feedback"
+                                            th:errors="*{fechaVigencia}"></div>
+
+                                        <!-- Checkbox para habilitar edición en modo editar -->
+                                        <div th:if="${usuario.id != null}" class="custom-control custom-checkbox mt-2">
+                                            <input type="checkbox" class="custom-control-input"
+                                                id="checkEditarFechaVigencia">
+                                            <label class="custom-control-label" for="checkEditarFechaVigencia">
+                                                <i class="fas fa-unlock-alt"></i> Permitir editar fecha de vigencia
+                                            </label>
+                                        </div>
+
+                                        <!-- Campo date que aparece solo cuando se marca el checkbox -->
+                                        <input th:if="${usuario.id != null}" type="date" class="form-control mt-2"
+                                            id="fechaVigenciaEdit" th:value="${usuario.fechaVigencia}"
+                                            style="display: none;" data-validar="fecha-no-pasada">
+
+                                        <small th:if="${usuario.id == null}" class="form-text text-info">
+                                            <i class="fas fa-info-circle"></i> Fecha hasta la cual el usuario tendrá
+                                            acceso (no requerido para ADMIN)
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="direccion">Direcci&oacute;n</label>
+                                        <input type="text" class="form-control" id="direccion" th:field="*{direccion}"
+                                            placeholder="Av. Ejemplo 123"
+                                            th:classappend="${#fields.hasErrors('direccion')} ? 'is-invalid' : ''">
+                                        <div th:if="${#fields.hasErrors('direccion')}" class="invalid-feedback"
+                                            th:errors="*{direccion}"></div>
+                                        <small class="form-text text-success">
+                                            <i class="fas fa-edit"></i> Campo editable
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECCIÓN DE ROLES -->
+                            <hr>
+                            <h5 class="mt-4 mb-3 text-primary"><i class="fas fa-user-tag mr-2"></i>Roles</h5>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <div class="row">
+                                            <div th:each="rol : ${roles}" class="col-md-3">
+                                                <div class="custom-control custom-checkbox">
+                                                    <input type="checkbox" class="custom-control-input rol-checkbox"
+                                                        th:id="'rol-' + ${rol.id}" th:value="${rol.id}"
+                                                        th:field="*{roles}" th:data-rol-nombre="${rol.nombre}">
+                                                    <label class="custom-control-label" th:for="'rol-' + ${rol.id}">
+                                                        <i class="fas fa-user-shield mr-1"
+                                                            th:if="${rol.nombre == 'ADMIN'}"></i>
+                                                        <i class="fas fa-tooth mr-1"
+                                                            th:if="${rol.nombre == 'ODONTOLOGO'}"></i>
+                                                        <i class="fas fa-user-tie mr-1"
+                                                            th:if="${rol.nombre == 'RECEPCIONISTA'}"></i>
+                                                        <i class="fas fa-boxes mr-1"
+                                                            th:if="${rol.nombre == 'ALMACEN'}"></i>
+                                                        <i class="fas fa-user-injured mr-1"
+                                                            th:if="${rol.nombre == 'PACIENTE'}"></i>
+                                                        <span th:text="${rol.nombre}"></span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div th:if="${#fields.hasErrors('roles')}" class="invalid-feedback d-block"
+                                            th:errors="*{roles}"></div>
+                                        <small class="form-text text-muted">
+                                            <i class="fas fa-info-circle"></i>
+                                            Seleccione al menos un rol para el usuario
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECCIÓN DE DATOS CLÍNICOS DEL PACIENTE (Visible solo si se marca PACIENTE) -->
+                            <div id="seccionDatosPaciente" style="display: none;">
+                                <hr>
+                                <h5 class="mt-4 mb-3 text-primary">
+                                    <i class="fas fa-user-injured mr-2"></i>Datos Clínicos del Paciente
+                                </h5>
+                                <div class="form-group">
+                                    <label for="alergias">Alergias Conocidas</label>
+                                    <textarea class="form-control" th:field="*{alergias}" id="alergias" rows="3"
+                                        placeholder="Ej: Penicilina, AINES..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="antecedentesMedicos">Antecedentes Médicos</label>
+                                    <textarea class="form-control" th:field="*{antecedentesMedicos}"
+                                        id="antecedentesMedicos" rows="3"
+                                        placeholder="Ej: Hipertensión, Diabetes..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tratamientosActuales">Tratamientos Actuales</label>
+                                    <textarea class="form-control" th:field="*{tratamientosActuales}"
+                                        id="tratamientosActuales" rows="3"
+                                        placeholder="Medicamentos o tratamientos en curso..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- SECCIÓN DE HORARIOS (Visible solo si se marca ODONTOLOGO) -->
+                            <div id="seccionHorarios" style="display: none;">
+                                <hr>
+                                <h5 class="mt-4 mb-3 text-primary"><i class="far fa-calendar-alt mr-2"></i>Horario
+                                    Laboral (Odont&oacute;logo)</h5>
+                                <p class="text-muted small">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Seleccione visualmente los bloques de horario haciendo click en ellos.
+                                    Puede usar los horarios predefinidos o seleccionar bloques individuales.
+                                </p>
+
+                                <!-- Acciones Rápidas -->
+                                <div class="acciones-rapidas">
+                                    <button type="button" id="btnAplicarTodos" class="btn btn-info btn-sm">
+                                        <i class="fas fa-copy mr-2"></i>Aplicar horario del Lunes a todos los
+                                        días
+                                    </button>
+                                    <button type="button" id="btnAplicarLaborables" class="btn btn-success btn-sm">
+                                        <i class="fas fa-business-time mr-2"></i>Aplicar solo a días laborables
+                                        (Ma-Vi)
+                                    </button>
+                                </div>
+
+                                <!-- Horario Regular con Selector Visual -->
+                                <h6 class="mb-3">
+                                    <i class="fas fa-clock mr-2"></i>Horario Regular Semanal
+                                </h6>
+
+                                <div class="accordion" id="accordionHorarios">
+                                    <div th:each="dia : ${diasSemana}" class="accordion-dia">
+                                        <div class="card">
+                                            <div class="card-header" th:id="'heading-' + ${dia}">
+                                                <button class="btn btn-link" type="button" data-toggle="collapse"
+                                                    th:attr="data-target='#collapse-' + ${dia}" aria-expanded="false">
+                                                    <span class="dia-icon"
+                                                        th:text="${#strings.substring(dia.toString(), 0, 2)}">L</span>
+                                                    <strong
+                                                        th:text="${#strings.capitalize(#strings.toLowerCase(dia.getDisplayName(T(java.time.format.TextStyle).FULL, localeEs)))}">Lunes</strong>
+                                                    <span class="badge badge-primary ml-2" th:id="'badge-' + ${dia}">Sin
+                                                        configurar</span>
+                                                </button>
+                                            </div>
+                                            <div th:id="'collapse-' + ${dia}" class="collapse"
+                                                th:attr="aria-labelledby='heading-' + ${dia}"
+                                                data-parent="#accordionHorarios">
+                                                <div class="card-body">
+                                                    <!-- Selector visual -->
+                                                    <div th:id="'selector-' + ${dia}"></div>
+
+                                                    <!-- Preview del horario -->
+                                                    <div class="horario-preview mt-3">
+                                                        <strong>Horario configurado:</strong>
+                                                        <div th:id="'preview-' + ${dia}" class="mt-1">
+                                                            <em class="text-muted">Sin horario configurado</em>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Input hidden para enviar el valor -->
+                                                    <input type="hidden" th:name="'horarioRegular[' + ${dia} + ']'"
+                                                        th:value="*{horarioRegular != null ? horarioRegular[__${dia}__] : ''}" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-danger small mt-2" th:if="${#fields.hasErrors('horarioRegular')}"
+                                    th:errors="*{horarioRegular}"></div>
+
+                            </div> <!-- Fin #seccionHorarios -->
+
+                        </div> <!-- Fin .card-body -->
+
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary" data-loading-text="Guardando usuario..."><i
+                                    class="fas fa-save mr-2"></i>Guardar
+                                Usuario</button>
+                            <a th:href="@{/usuarios}" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </div>
+
+
+    <th:block id="page-scripts">
+        <script th:src="@{/js/validacion-documentos.js}"></script>
+        <script>
+            // === FUNCIONES UTILITY PARA ALERTAS ===
+            function mostrarExito(mensaje) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Éxito!',
+                    text: mensaje,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    showConfirmButton: false
+                });
+            }
+
+            function mostrarError(mensaje) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: mensaje,
+                    confirmButtonText: 'Entendido'
+                });
+            }
+
+            function mostrarAdvertencia(mensaje) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Advertencia',
+                    text: mensaje,
+                    confirmButtonText: 'Entendido'
+                });
+            }
+
+            function mostrarInfo(mensaje) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Información',
+                    text: mensaje,
+                    confirmButtonText: 'Entendido'
+                });
+            }
+
+            let loadingAlert = null;
+
+            function mostrarCargando(mensaje) {
+                loadingAlert = Swal.fire({
+                    title: 'Procesando...',
+                    text: mensaje,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
+            function cerrarCargando() {
+                if (loadingAlert) {
+                    Swal.close();
+                    loadingAlert = null;
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                // --- FUNCIONALIDAD DE BÚSQUEDA DE DNI ---
+                const tipoDocumentoSelect = document.getElementById('tipoDocumentoId');
+                const numeroDocumentoInput = document.getElementById('numeroDocumento');
+                const nombreCompletoInput = document.getElementById('nombreCompleto');
+                const btnBuscarDni = document.getElementById('btn-buscar-dni');
+                const docError = document.getElementById('doc-error');
+                let timeoutId = null; // Para debounce
+
+                // Función para verificar si el tipo de documento es DNI
+                function esDNI() {
+                    const selectedOption = tipoDocumentoSelect.options[tipoDocumentoSelect.selectedIndex];
+                    return selectedOption && selectedOption.text.toUpperCase().includes('DNI');
+                }
+
+                // Limpiar campos si cambia el tipo de documento (solo en modo creación)
+                tipoDocumentoSelect.addEventListener('change', function () {
+                    // ✅ SOLO limpiar campos si estamos en modo CREACIÓN (no en edición)
+                    const modoEdicion = document.querySelector('input[name="id"]')?.value;
+                    if (!modoEdicion) {
+                        // Si cambia el tipo de documento, limpiar nombre y DNI
+                        nombreCompletoInput.value = '';
+                        nombreCompletoInput.readOnly = true; // Volver a bloquear
+                        nombreCompletoInput.classList.remove('bg-light');
+                        numeroDocumentoInput.value = '';
+                    }
+                });
+
+                // Si se cambia o borra el DNI, limpiar el nombre automáticamente
+                numeroDocumentoInput.addEventListener('input', function () {
+                    const modoEdicion = document.querySelector('input[name="id"]')?.value;
+                    if (!modoEdicion) {
+                        // Solo si estamos en modo creación
+                        const dniActual = this.value.trim();
+
+                        // Si se borra o cambia el DNI, borrar el nombre
+                        if (dniActual.length !== 8 || !/^\d{8}$/.test(dniActual)) {
+                            nombreCompletoInput.value = '';
+                            nombreCompletoInput.readOnly = true;
+                            nombreCompletoInput.classList.remove('bg-light');
+                            docError.textContent = '';
+                        }
+                    }
+                });
+
+                // Función para buscar DNI
+                function buscarDatosReniec(dni) {
+                    // Validar que sea DNI y tenga 8 dígitos
+                    if (!esDNI() || !dni || dni.length !== 8) {
+                        return;
+                    }
+
+                    // Obtener el ID del tipo de documento
+                    const tipoDocId = tipoDocumentoSelect.value;
+                    if (!tipoDocId) {
+                        mostrarAdvertencia('Debe seleccionar un tipo de documento');
+                        return;
+                    }
+
+                    // Limpiar mensajes previos
+                    docError.textContent = '';
+                    docError.classList.remove('text-success');
+                    docError.classList.add('text-danger');
+                    docError.textContent = 'Buscando en RENIEC...';
+
+                    // Mostrar indicador de carga
+                    mostrarCargando('Buscando datos en RENIEC...');
+
+                    // ✅ FIX CRÍTICO: Usar readOnly en lugar de disabled
+                    // disabled impide que el valor se envíe en el formulario
+                    numeroDocumentoInput.readOnly = true;
+                    nombreCompletoInput.readOnly = true;
+
+                    // Llamar al endpoint REST con los parámetros correctos
+                    $.ajax({
+                        url: '/usuarios/api/buscar-dni',
+                        method: 'GET',
+                        data: {
+                            numDoc: dni,
+                            tipoDocId: tipoDocId
+                        },
+                        success: function (response) {
+                            cerrarCargando();
+                            if (response.nombreCompleto) {
+                                nombreCompletoInput.value = response.nombreCompleto;
+                                // ✅ Mantener readOnly para evitar edición accidental
+                                nombreCompletoInput.readOnly = true;
+                                nombreCompletoInput.classList.add('bg-light');
+                                nombreCompletoInput.setAttribute('data-from-reniec', 'true');
+                                docError.textContent = 'Datos cargados con éxito.';
+                                docError.classList.remove('text-danger');
+                                docError.classList.add('text-success');
+                                mostrarExito('Datos encontrados correctamente desde RENIEC');
+                            } else {
+                                nombreCompletoInput.readOnly = false;
+                                nombreCompletoInput.classList.remove('bg-light');
+                                nombreCompletoInput.removeAttribute('data-from-reniec');
+                                docError.textContent = 'No se encontraron datos para este DNI';
+                                mostrarAdvertencia('No se encontraron datos para este DNI');
+                            }
+                        },
+                        error: function (xhr) {
+                            cerrarCargando();
+                            nombreCompletoInput.readOnly = false;
+                            nombreCompletoInput.classList.remove('bg-light');
+                            nombreCompletoInput.removeAttribute('data-from-reniec');
+                            let errorMsg = 'Error al consultar RENIEC';
+                            if (xhr.responseJSON && xhr.responseJSON.error) {
+                                errorMsg = xhr.responseJSON.error;
+                            } else if (xhr.status === 404) {
+                                errorMsg = 'No se encontraron datos para este DNI';
+                            }
+                            docError.textContent = errorMsg;
+                            mostrarAdvertencia(errorMsg);
+                        },
+                        complete: function () {
+                            // Re-habilitar el input de número de documento solo en modo creación
+                            const modoEdicion = document.querySelector('input[name="id"]')?.value;
+                            if (!modoEdicion) {
+                                numeroDocumentoInput.readOnly = false;
+                            }
+                        }
+                    });
+                }
+
+                // Evento al hacer clic en el botón de búsqueda
+                btnBuscarDni.addEventListener('click', function () {
+                    const dni = numeroDocumentoInput.value.trim();
+                    if (dni.length === 8) {
+                        buscarDatosReniec(dni);
+                    } else {
+                        mostrarAdvertencia('El DNI debe tener 8 dígitos');
+                    }
+                });
+
+                // Auto-búsqueda al escribir (debounce de 1 segundo)
+                numeroDocumentoInput.addEventListener('input', function () {
+                    const dni = this.value.trim();
+
+                    // Limpiar timeout anterior
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                    }
+
+                    // ✅ SOLO en modo CREACIÓN
+                    const modoEdicion = document.querySelector('input[name="id"]')?.value;
+                    if (!modoEdicion) {
+                        // Si tiene 8 dígitos y es DNI, buscar automáticamente después de 1 segundo
+                        if (esDNI() && dni.length === 8 && /^\d{8}$/.test(dni)) {
+                            timeoutId = setTimeout(function () {
+                                buscarDatosReniec(dni);
+                            }, 1000);
+                        }
+                    }
+                });
+
+                // --- FIN FUNCIONALIDAD DNI ---
+
+                // --- FUNCIONALIDAD DE FECHA DE VIGENCIA Y ROL ADMIN ---
+                // En modo creación: fechaVigencia; En modo edición: fechaVigenciaEdit
+                const fechaVigenciaInput = document.getElementById('fechaVigencia') || document.getElementById('fechaVigenciaEdit');
+                const grupoFechaVigencia = document.getElementById('grupoFechaVigencia');
+                const vigenciaRequired = document.getElementById('vigenciaRequired');
+                let rolAdminId = null;
+
+                const seccionHorarios = document.getElementById('seccionHorarios');
+                const checkboxesRoles = document.querySelectorAll('.rol-checkbox');
+                let rolOdontologoId = null;
+
+                // Encontrar el ID del rol ODONTOLOGO y ADMIN dinámicamente
+                checkboxesRoles.forEach(cb => {
+                    const rolNombre = cb.dataset.rolNombre ? cb.dataset.rolNombre.toUpperCase() : '';
+
+                    if (rolNombre === 'ODONTOLOGO') {
+                        rolOdontologoId = cb.value;
+                    }
+                    if (rolNombre === 'ADMIN') {
+                        rolAdminId = cb.value;
+                    }
+
+                    cb.addEventListener('change', function (event) {
+                        // Si es ADMIN y se está marcando, prevenir el cambio hasta confirmar
+                        if (this.dataset.rolNombre && this.dataset.rolNombre.toUpperCase() === 'ADMIN' && this.checked) {
+                            event.preventDefault();
+                            this.checked = false; // Desmarcar temporalmente
+                            verificarRolAdmin(this);
+                        } else {
+                            toggleSeccionHorarios();
+                            toggleFechaVigencia();
+                            toggleSeccionDatosPaciente();
+                            if (this.dataset.rolNombre && this.dataset.rolNombre.toUpperCase() === 'ADMIN' && !this.checked) {
+                                // Si se desmarca ADMIN, no pedir confirmación
+                                toggleFechaVigencia();
+                            }
+                        }
+                    });
+                });
+
+                function toggleSeccionHorarios() {
+                    let odontologoSeleccionado = false;
+                    checkboxesRoles.forEach(cb => {
+                        // Asegurarse de comparar con rolOdontologoId (que es string)
+                        if (cb.value === rolOdontologoId && cb.checked) {
+                            odontologoSeleccionado = true;
+                        }
+                    });
+
+                    if (odontologoSeleccionado) {
+                        seccionHorarios.style.display = 'block';
+                        // Habilitar campos dentro de la sección y añadir 'required' si aplica
+                        seccionHorarios.querySelectorAll('input, select, textarea, button').forEach(el => {
+                            el.disabled = false;
+                            // Re-aplicar 'required' si estaba originalmente en la plantilla o en filas existentes
+                            if (el.hasAttribute('data-original-required')) {
+                                el.required = true;
+                            }
+                        });
+
+
+                    } else {
+                        seccionHorarios.style.display = 'none';
+                        // Deshabilitar campos y quitar 'required' temporalmente
+                        seccionHorarios.querySelectorAll('input, select, textarea, button').forEach(el => {
+                            el.disabled = true;
+                            // Guardar si el campo era originalmente required
+                            if (el.required) {
+                                el.setAttribute('data-original-required', 'true');
+                                el.required = false; // Quitar required mientras está oculto
+                            }
+                            // Limpiar validaciones inválidas visuales al ocultar
+                            el.classList.remove('is-invalid');
+                            // Limpiar mensajes de error personalizados
+                            if (el.setCustomValidity) el.setCustomValidity('');
+
+                        });
+                    }
+                }
+
+                let rolPacienteId = null;
+                checkboxesRoles.forEach(cb => {
+                    const rolNombre = cb.dataset.rolNombre ? cb.dataset.rolNombre.toUpperCase() : '';
+                    if (rolNombre === 'PACIENTE') {
+                        rolPacienteId = cb.value;
+                    }
+                });
+
+                function toggleSeccionDatosPaciente() {
+                    const seccionDatosPaciente = document.getElementById('seccionDatosPaciente');
+                    let pacienteSeleccionado = false;
+
+                    checkboxesRoles.forEach(cb => {
+                        if (cb.value === rolPacienteId && cb.checked) {
+                            pacienteSeleccionado = true;
+                        }
+                    });
+
+                    if (pacienteSeleccionado) {
+                        seccionDatosPaciente.style.display = 'block';
+                        // Habilitar campos
+                        seccionDatosPaciente.querySelectorAll('textarea').forEach(el => {
+                            el.disabled = false;
+                        });
+                    } else {
+                        seccionDatosPaciente.style.display = 'none';
+                        // Deshabilitar y limpiar campos
+                        seccionDatosPaciente.querySelectorAll('textarea').forEach(el => {
+                            el.disabled = true;
+                        });
+                    }
+                }
+
+                // Llamar al inicio
+                toggleSeccionDatosPaciente();
+
+                // --- FUNCIÓN PARA TOGGLE DE FECHA DE VIGENCIA ---
+                function toggleFechaVigencia() {
+                    let adminSeleccionado = false;
+
+                    checkboxesRoles.forEach(cb => {
+                        if (cb.value === rolAdminId && cb.checked) {
+                            adminSeleccionado = true;
+                        }
+                    });
+
+                    if (adminSeleccionado) {
+                        // Si es ADMIN, fecha de vigencia NO es requerida
+                        fechaVigenciaInput.required = false;
+                        vigenciaRequired.style.display = 'none';
+                        grupoFechaVigencia.classList.remove('required');
+                    } else {
+                        // Para cualquier otro rol, fecha de vigencia ES requerida
+                        fechaVigenciaInput.required = true;
+                        vigenciaRequired.style.display = 'inline';
+                        grupoFechaVigencia.classList.add('required');
+                    }
+                }
+
+                // --- FUNCIÓN PARA VERIFICAR ROL ADMIN (DOBLE CONFIRMACIÓN) ---
+                function verificarRolAdmin(checkbox) {
+                    if (checkbox.dataset.rolNombre && checkbox.dataset.rolNombre.toUpperCase() === 'ADMIN') {
+                        Swal.fire({
+                            title: '¿Asignar rol ADMIN?',
+                            html: '<p class="text-warning"><strong>ADVERTENCIA:</strong></p>' +
+                                '<p>Está a punto de asignar el rol de <strong>ADMINISTRADOR</strong>.</p>' +
+                                '<p>Este rol tiene acceso completo al sistema y <strong>NO podrá ser modificado posteriormente</strong>.</p>' +
+                                '<p>¿Está completamente seguro?</p>',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#d33',
+                            cancelButtonColor: '#3085d6',
+                            confirmButtonText: 'Sí, continuar',
+                            cancelButtonText: 'Cancelar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                // Primera confirmación pasada, pedir segunda
+                                Swal.fire({
+                                    title: 'SEGUNDA CONFIRMACIÓN',
+                                    html: '<p class="text-danger"><strong>Esta es su última oportunidad.</strong></p>' +
+                                        '<p>Una vez guardado, este usuario con rol ADMIN:</p>' +
+                                        '<ul class="text-left">' +
+                                        '<li>Tendrá acceso completo al sistema</li>' +
+                                        '<li>NO podrá ser modificado ni eliminado</li>' +
+                                        '<li>No requerirá fecha de vigencia</li>' +
+                                        '</ul>' +
+                                        '<p><strong>¿Confirma la asignación del rol ADMIN?</strong></p>',
+                                    icon: 'error',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#d33',
+                                    cancelButtonColor: '#3085d6',
+                                    confirmButtonText: 'SÍ, CONFIRMO',
+                                    cancelButtonText: 'NO, cancelar'
+                                }).then((secondResult) => {
+                                    if (!secondResult.isConfirmed) {
+                                        // Si cancela la segunda confirmación, desmarcar el checkbox
+                                        checkbox.checked = false;
+                                        toggleFechaVigencia();
+                                        mostrarInfo('Asignación de rol ADMIN cancelada');
+                                    } else {
+                                        // ✅ MARCAR EL CHECKBOX DESPUÉS DE CONFIRMAR
+                                        checkbox.checked = true;
+                                        toggleFechaVigencia();
+                                        mostrarExito('Rol ADMIN confirmado. Recuerde que este cambio es permanente.');
+                                    }
+                                });
+                            } else {
+                                // Si cancela la primera confirmación, desmarcar el checkbox
+                                checkbox.checked = false;
+                                toggleFechaVigencia();
+                            }
+                        });
+                    }
+                }
+
+                // Llamar al inicio para establecer el estado inicial correcto
+                toggleSeccionHorarios();
+                toggleFechaVigencia();
+
+                // Manejar checkbox de edición de fecha de vigencia
+                const checkEditarFechaVigencia = document.getElementById('checkEditarFechaVigencia');
+                const fechaVigenciaDisplay = document.getElementById('fechaVigenciaDisplay');
+                const fechaVigenciaEdit = document.getElementById('fechaVigenciaEdit');
+                const fechaVigenciaHidden = document.getElementById('fechaVigenciaHidden');
+
+                if (checkEditarFechaVigencia && fechaVigenciaDisplay && fechaVigenciaEdit && fechaVigenciaHidden) {
+                    checkEditarFechaVigencia.addEventListener('change', function () {
+                        if (this.checked) {
+                            // Mostrar campo de edición
+                            fechaVigenciaDisplay.style.display = 'none';
+                            fechaVigenciaEdit.style.display = 'block';
+                            fechaVigenciaEdit.classList.add('border-warning');
+                        } else {
+                            // Ocultar campo de edición y actualizar display
+                            fechaVigenciaEdit.style.display = 'none';
+                            fechaVigenciaDisplay.style.display = 'block';
+                            fechaVigenciaEdit.classList.remove('border-warning');
+
+                            // Actualizar el hidden field con el valor editado
+                            if (fechaVigenciaEdit.value) {
+                                fechaVigenciaHidden.value = fechaVigenciaEdit.value;
+                                // Formatear y mostrar la nueva fecha
+                                const fecha = new Date(fechaVigenciaEdit.value + 'T00:00:00');
+                                fechaVigenciaDisplay.value = fecha.toLocaleDateString('es-ES');
+                            }
+                        }
+                    });
+
+                    // Sincronizar cambios del campo edit al hidden
+                    fechaVigenciaEdit.addEventListener('change', function () {
+                        fechaVigenciaHidden.value = this.value;
+                    });
+                }
+
+                // Validar formato de hora en inputs (existentes y nuevos)
+                function addHoraInputValidation(inputElement) {
+                    inputElement.addEventListener('input', function () {
+                        // Permitir campo vacío si no es required (horario regular)
+                        // O si el valor es exactamente "NO_LABORABLE" (excepciones)
+                        // Corregir: el horario regular NO tiene required, excepciones SÍ lo tienen en fecha y horas
+                        const isEmptyAllowed = !inputElement.hasAttribute('required') || this.value.toUpperCase() === 'NO_LABORABLE';
+                        const pattern = new RegExp(this.pattern);
+
+                        if (this.value && !isEmptyAllowed && !pattern.test(this.value)) {
+                            this.setCustomValidity(this.title || 'Formato inválido');
+                            this.classList.add('is-invalid');
+                        } else if (this.value.toUpperCase() === 'NO_LABORABLE' && this.pattern.includes('NO_LABORABLE')) {
+                            // Si es NO_LABORABLE y el patrón lo permite, es válido
+                            this.setCustomValidity('');
+                            this.classList.remove('is-invalid');
+                        } else if (this.value && !pattern.test(this.value)) {
+                            // Si tiene valor pero no coincide con el patrón completo (y no es NO_LABORABLE permitido)
+                            // Y no es un campo vacío permitido
+                            if (!this.value && !inputElement.hasAttribute('required')) {
+                                this.setCustomValidity('');
+                                this.classList.remove('is-invalid');
+                            } else {
+                                this.setCustomValidity(this.title || 'Formato inválido');
+                                this.classList.add('is-invalid');
+                            }
+                        }
+                        else { // Válido (coincide patrón o es vacío permitido)
+                            this.setCustomValidity('');
+                            this.classList.remove('is-invalid');
+                        }
+                    });
+                    // Disparar validación inicial por si hay valores precargados inválidos
+                    if (inputElement.value) {
+                        inputElement.dispatchEvent(new Event('input'));
+                    }
+                }
+
+                document.querySelectorAll('.hora-input').forEach(addHoraInputValidation);
+
+                // === VALIDACIONES EN TIEMPO REAL ===
+
+                // Obtener ID del usuario si estamos en modo edición
+                const usuarioIdInput = document.querySelector('input[name="id"]');
+                const usuarioIdActual = usuarioIdInput ? usuarioIdInput.value : null;
+
+                // Validar DNI duplicado
+                let dniTimeout;
+                numeroDocumentoInput.addEventListener('blur', function () {
+                    const dni = this.value.trim();
+                    const docError = document.getElementById('doc-error');
+
+                    if (dni.length === 8 && /^\d{8}$/.test(dni) && !usuarioIdActual) {
+                        clearTimeout(dniTimeout);
+                        dniTimeout = setTimeout(function () {
+                            $.ajax({
+                                url: '/usuarios/api/validar-dni',
+                                method: 'GET',
+                                data: {
+                                    dni: dni,
+                                    usuarioId: usuarioIdActual
+                                },
+                                success: function (response) {
+                                    if (!response.disponible) {
+                                        docError.textContent = response.mensaje;
+                                        numeroDocumentoInput.classList.add('is-invalid');
+                                    } else {
+                                        docError.textContent = '';
+                                        numeroDocumentoInput.classList.remove('is-invalid');
+                                    }
+                                }
+                            });
+                        }, 500);
+                    }
+                });
+
+                // Validar email duplicado
+                let emailTimeout;
+                const emailInput = document.getElementById('email');
+                const emailFeedback = document.createElement('small');
+                emailFeedback.className = 'form-text text-danger';
+                emailFeedback.id = 'email-error';
+                emailInput.parentNode.appendChild(emailFeedback);
+
+                emailInput.addEventListener('blur', function () {
+                    const email = this.value.trim();
+
+                    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        clearTimeout(emailTimeout);
+                        emailTimeout = setTimeout(function () {
+                            $.ajax({
+                                url: '/usuarios/api/validar-email',
+                                method: 'GET',
+                                data: {
+                                    email: email,
+                                    usuarioId: usuarioIdActual
+                                },
+                                success: function (response) {
+                                    if (!response.disponible) {
+                                        emailFeedback.textContent = response.mensaje;
+                                        emailInput.classList.add('is-invalid');
+                                    } else {
+                                        emailFeedback.textContent = '';
+                                        emailInput.classList.remove('is-invalid');
+                                    }
+                                }
+                            });
+                        }, 500);
+                    }
+                });
+
+                // Validar teléfono duplicado
+                let telefonoTimeout;
+                const telefonoInput = document.getElementById('telefono');
+                const telefonoFeedback = document.createElement('small');
+                telefonoFeedback.className = 'form-text text-danger';
+                telefonoFeedback.id = 'telefono-error';
+                telefonoInput.parentNode.appendChild(telefonoFeedback);
+
+                telefonoInput.addEventListener('blur', function () {
+                    const telefono = this.value.trim();
+
+                    if (telefono && /^\d{9}$/.test(telefono)) {
+                        clearTimeout(telefonoTimeout);
+                        telefonoTimeout = setTimeout(function () {
+                            $.ajax({
+                                url: '/usuarios/api/validar-telefono',
+                                method: 'GET',
+                                data: {
+                                    telefono: telefono,
+                                    usuarioId: usuarioIdActual
+                                },
+                                success: function (response) {
+                                    if (!response.disponible) {
+                                        telefonoFeedback.textContent = response.mensaje;
+                                        telefonoInput.classList.add('is-invalid');
+                                    } else {
+                                        telefonoFeedback.textContent = '';
+                                        telefonoInput.classList.remove('is-invalid');
+                                    }
+                                }
+                            });
+                        }, 500);
+                    }
+                });
+
+                // === FIN VALIDACIONES EN TIEMPO REAL ===
+
+            }); // Fin DOMContentLoaded
+
+        </script>
+    </th:block>
+
+</body>
+
+</html>
