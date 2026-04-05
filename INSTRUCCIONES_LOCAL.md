@@ -46,4 +46,3 @@ El sistema genera automáticamente datos de prueba iniciales cuando arranca. Pue
 - **Base de Datos:** Docker expone el puerto `3307` hacia tu computadora. Si quieres conectar un administrador visual como DBeaver o DataGrip, usa `localhost:3307` y las credenciales que pusiste en tu `.env`.
 - **Nuevos Cambios:** Siempre que edites código Java, recuerda detener el contenedor y volver a ejecutar `docker compose up --build`.
 
-¡Feliz código! 🚀
