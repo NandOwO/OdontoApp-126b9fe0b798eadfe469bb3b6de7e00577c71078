@@ -1,7 +1,7 @@
-// Archivo: C:\proyectos\nuevo\odontoapp\src\main\java\com\odontoapp\servicio\EmailService.java
 package com.odontoapp.servicio;
 
 import com.odontoapp.entidad.Cita;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -9,266 +9,262 @@ import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 @Service
 public class EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
+
+    // ─── ICONOS SVG ───
+    private static final String SVG_MAIL = "<svg fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" width=\"100%\" height=\"100%\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z\"></path></svg>";
+    private static final String SVG_USER_GEAR = "<svg fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" width=\"100%\" height=\"100%\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z\"></path></svg>";
+    private static final String SVG_USER_PLUS = "<svg fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" width=\"100%\" height=\"100%\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z\"></path></svg>";
+    private static final String SVG_KEY = "<svg fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" width=\"100%\" height=\"100%\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z\"></path></svg>";
+    private static final String SVG_CHECK = "<svg fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" width=\"100%\" height=\"100%\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>";
+    private static final String SVG_X = "<svg fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" width=\"100%\" height=\"100%\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>";
+    private static final String SVG_BELL = "<svg fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" width=\"100%\" height=\"100%\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"></path></svg>";
+
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
-    // Este método envía el link para que el ADMIN creado por el sistema establezca
-    // su password
+    // ══════════════════════════════════════════════════════════════════════════
+    //  MÉTODOS DE ENVÍO PÚBLICOS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** Activación de cuenta para personal (admin, odontólogo, etc.) */
     public void enviarEmailActivacionAdmin(String para, String nombre, String token) {
-        String urlActivacion = "http://159.112.151.106:8080/activar-cuenta?token=" + token;
-        String subject = "Activa tu cuenta en OdontoApp (Personal)";
-        String content = "<p>Hola " + nombre + ",</p>"
-                + "<p>Tu cuenta de personal ha sido creada en OdontoApp.</p>"
-                + "<p>Haz clic en el siguiente enlace para establecer tu contraseña y activar tu acceso:</p>"
-                + "<h3><a href=\"" + urlActivacion + "\">Establecer Contraseña</a></h3>"
-                + "<p>Si no esperabas este email, por favor contacta al administrador.</p>";
-        try {
-            enviarEmail(para, subject, content);
-        } catch (MessagingException e) {
-            System.err.println("Error al enviar email de activación para ADMIN: " + e.getMessage());
-        }
+        String urlActivacion = baseUrl + "/activar-cuenta?token=" + token;
+        String subject = "Activa tu cuenta — OdontoApp";
+        
+        String html = buildIcon("#CCFBF1", "#0D9488", SVG_USER_GEAR)
+            + buildTitle("¡Tu cuenta está lista!", 
+                         "Hola " + nombre + ", tu cuenta de personal en OdontoApp ha sido creada exitosamente.", 
+                         "Para acceder al sistema deberás activar tu cuenta configurando una contraseña personal.")
+            + buildInfoBox("#F0FDFA", "#99F6E4", "#115E59", "#0F766E", "💡 Información Importante:", 
+                         "<ul style=\"margin:0;padding-left:24px;\"><li style=\"margin-bottom:4px;\">Este enlace es único y expirará si no lo usas.</li><li>Si no solicitaste una cuenta, comunícate con el administrador.</li></ul>")
+            + buildButton("#0D9488", "Activar mi cuenta", urlActivacion);
+
+        enviarSeguro(para, subject, buildWrapper(html), "activación admin");
     }
 
-    // 🔥 NUEVO MÉTODO para el link de registro de PACIENTE (Flujo Self-Service)
+    /** Completar registro para paciente (self-service) */
     public void enviarEmailActivacion(String para, String nombre, String token) {
-        String urlActivacion = "http://159.112.151.106:8080/registro/completar?token=" + token;
-        String subject = "Completa tu registro en OdontoApp";
-        String content = "<p>Hola " + nombre + ",</p>"
-                + "<p>Gracias por iniciar tu registro en OdontoApp.</p>"
-                + "<p>Haz clic en el siguiente enlace para completar tus datos y crear tu contraseña:</p>"
-                + "<h3><a href=\"" + urlActivacion + "\">Completar Registro</a></h3>"
-                + "<p>Si no te registraste, por favor ignora este email.</p>";
-        try {
-            enviarEmail(para, subject, content);
-        } catch (MessagingException e) {
-            System.err.println("Error al enviar email de activación para PACIENTE: " + e.getMessage());
-        }
+        String urlActivacion = baseUrl + "/registro/completar?token=" + token;
+        String subject = "Completa tu registro — OdontoApp";
+
+        String html = buildIcon("#DBEAFE", "#2563EB", SVG_USER_PLUS)
+            + buildTitle("¡Casi terminamos!", 
+                         "Hola " + nombre + ", gracias por iniciar tu registro en OdontoApp.", 
+                         "Solo falta un paso para poder gestionar tus citas por internet.")
+            + buildInfoBox("#EFF6FF", "#BFDBFE", "#1E40AF", "#1D4ED8", "📋 Siguientes pasos:", 
+                         "<ul style=\"margin:0;padding-left:24px;\"><li style=\"margin-bottom:4px;\">Completa tu información personal en el link.</li><li>Crea tu contraseña segura para acceder a tu historial.</li></ul>")
+            + buildButton("#2563EB", "Completar mi registro", urlActivacion);
+
+        enviarSeguro(para, subject, buildWrapper(html), "activación paciente");
     }
 
-    private void enviarEmail(String para, String subject, String content) throws MessagingException {
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true);
-        helper.setTo(para);
-        helper.setSubject(subject);
-        helper.setText(content, true);
-        mailSender.send(message);
-    }
-
+    /** Contraseña temporal para usuario creado por el admin */
     public void enviarPasswordTemporal(String para, String nombre, String passwordTemporal) {
-        String subject = "Bienvenido a OdontoApp - Credenciales de Acceso";
-        String content = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>"
-                + "<h2 style='color: #007bff;'>¡Bienvenido a OdontoApp!</h2>"
-                + "<p>Hola <strong>" + nombre + "</strong>,</p>"
-                + "<p>Se ha creado tu cuenta en el sistema. A continuación tus credenciales de acceso:</p>"
-                + "<div style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;'>"
-                + "<p><strong>Email:</strong> " + para + "</p>"
-                + "<p><strong>Contraseña Temporal:</strong> <code style='background-color: #fff; padding: 5px; border: 1px solid #ddd; font-size: 16px;'>"
-                + passwordTemporal + "</code></p>"
-                + "</div>"
-                + "<div style='background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;'>"
-                + "<p style='margin: 0; color: #856404;'><strong>⚠️ IMPORTANTE:</strong></p>"
-                + "<p style='margin: 5px 0 0 0; color: #856404;'>Por seguridad, deberás cambiar esta contraseña en tu primer inicio de sesión.</p>"
-                + "</div>"
-                + "<p>Puedes iniciar sesión en: <a href='http://159.112.151.106:8080/login'>http://159.112.151.106:8080/login</a></p>"
-                + "<hr style='margin: 30px 0; border: none; border-top: 1px solid #ddd;'>"
-                + "<p style='color: #6c757d; font-size: 12px;'>Este es un mensaje automático, por favor no responder.</p>"
-                + "</div>";
+        String subject = "Bienvenido a OdontoApp — Tus credenciales de acceso";
+
+        String html = buildIcon("#FEF3C7", "#D97706", SVG_KEY)
+            + buildTitle("Bienvenido a OdontoApp", 
+                         "Hola " + nombre + ", se ha configurado tu acceso al sistema.", 
+                         "A continuación encontrarás tus credenciales de acceso temporal.")
+            + "<div style=\"background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:16px; text-align:left; margin-bottom:16px;\">"
+            + "<p style=\"font-size:14px; color:#475569; margin:0 0 8px;\"><strong>Email:</strong> " + para + "</p>"
+            + "<p style=\"font-size:14px; color:#475569; margin:0;\"><strong>Contraseña Temporal:</strong> <code style=\"background-color:#E2E8F0; padding:2px 6px; border-radius:4px;\">" + passwordTemporal + "</code></p>"
+            + "</div>"
+            + buildInfoBox("#FEF3C7", "#FDE68A", "#92400E", "#B45309", "⚠️ Importante:", 
+                         "<p style=\"margin:0;\">Por tu seguridad, el sistema te pedirá cambiar esta contraseña en tu primer inicio de sesión.</p>")
+            + buildButton("#D97706", "Ir al inicio de sesión", baseUrl + "/login");
 
         try {
-            enviarEmail(para, subject, content);
+            enviarEmail(para, subject, buildWrapper(html));
         } catch (MessagingException e) {
             System.err.println("Error al enviar email con contraseña temporal: " + e.getMessage());
             throw new RuntimeException("Error al enviar email con contraseña temporal: " + e.getMessage());
         }
     }
 
-    /**
-     * Envía email de recuperación de contraseña
-     */
+    /** Recuperación de contraseña */
     public void enviarEmailRecuperacionPassword(String para, String nombre, String token) {
-        String urlRestablecer = "http://159.112.151.106:8080/recuperar-password/restablecer?token=" + token;
-        String subject = "Recuperar Contraseña - OdontoApp";
-        String content = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>"
-                + "<h2 style='color: #007bff;'>Recuperar Contraseña</h2>"
-                + "<p>Hola <strong>" + nombre + "</strong>,</p>"
-                + "<p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en OdontoApp.</p>"
-                + "<p>Haz clic en el siguiente enlace para establecer una nueva contraseña:</p>"
-                + "<div style='text-align: center; margin: 30px 0;'>"
-                + "<a href=\"" + urlRestablecer + "\" "
-                + "style='background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>"
-                + "Restablecer Contraseña"
-                + "</a>"
-                + "</div>"
-                + "<div style='background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;'>"
-                + "<p style='margin: 0; color: #856404;'><strong>⚠️ IMPORTANTE:</strong></p>"
-                + "<p style='margin: 5px 0 0 0; color: #856404;'>Este enlace expirará en 24 horas por seguridad.</p>"
-                + "<p style='margin: 5px 0 0 0; color: #856404;'>Si no solicitaste restablecer tu contraseña, ignora este email y tu contraseña permanecerá sin cambios.</p>"
-                + "</div>"
-                + "<hr style='margin: 30px 0; border: none; border-top: 1px solid #ddd;'>"
-                + "<p style='color: #6c757d; font-size: 12px;'>Este es un mensaje automático, por favor no responder.</p>"
-                + "</div>";
+        String urlRestablecer = baseUrl + "/recuperar-password/restablecer?token=" + token;
+        String subject = "Restablece tu contraseña — OdontoApp";
+
+        String html = buildIcon("#DCFCE7", "#16A34A", SVG_MAIL)
+            + buildTitle("¡Email Enviado!", 
+                         "Hemos recibido una solicitud para restablecer tu contraseña.", 
+                         "Por favor, sigue las instrucciones para crear una nueva.")
+            + buildInfoBox("#EFF6FF", "#BFDBFE", "#1E40AF", "#1D4ED8", "💡 Consejos:", 
+                         "<ul style=\"margin:0;padding-left:24px;\"><li style=\"margin-bottom:4px;\">Este link expirará en 24 horas.</li><li>Si no solicitaste el cambio, puedes ignorar este correo.</li></ul>")
+            + buildButton("#2563EB", "Restablecer contraseña", urlRestablecer)
+            + "<div style=\"text-align:center; font-size:14px;\"><a href=\"" + baseUrl + "/login\" style=\"font-weight:500; color:#475569;\">Volver al inicio de sesión</a></div>";
 
         try {
-            enviarEmail(para, subject, content);
+            enviarEmail(para, subject, buildWrapper(html));
         } catch (MessagingException e) {
-            System.err.println("Error al enviar email de recuperación de contraseña: " + e.getMessage());
+            System.err.println("Error al enviar email de recuperación: " + e.getMessage());
             throw new RuntimeException("Error al enviar email de recuperación: " + e.getMessage());
         }
     }
 
-    // ============ NOTIFICACIONES DE CITAS ============
+    // ──────────────────────────────────────────────────────────────────────────
+    //  NOTIFICACIONES DE CITAS
+    // ──────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Envía email de confirmación de cita al paciente
-     */
+    /** Cita confirmada */
     public void enviarConfirmacionCita(Cita cita) {
-        DateTimeFormatter formatoFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        DateTimeFormatter formatoHora = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM", Locale.forLanguageTag("es-PE"));
+        DateTimeFormatter fmtH = DateTimeFormatter.ofPattern("HH:mm");
 
-        String fechaCita = cita.getFechaHoraInicio().format(formatoFecha);
-        String horaCita = cita.getFechaHoraInicio().format(formatoHora);
+        String subject = "✅ Cita confirmada — OdontoApp";
+        
+        String detalles = "<p style=\"font-size:14px; color:#334155; margin:0 0 12px;\"><strong style=\"color:#64748B;\">📅 Fecha:</strong> " + cita.getFechaHoraInicio().format(fmt) + "</p>"
+                        + "<p style=\"font-size:14px; color:#334155; margin:0 0 12px;\"><strong style=\"color:#64748B;\">🕐 Hora:</strong> " + cita.getFechaHoraInicio().format(fmtH) + " hrs</p>"
+                        + "<p style=\"font-size:14px; color:#334155; margin:0 0 12px;\"><strong style=\"color:#64748B;\">👨‍⚕️ Dentista:</strong> " + cita.getOdontologo().getNombreCompleto() + "</p>"
+                        + "<p style=\"font-size:14px; color:#334155; margin:0;\"><strong style=\"color:#64748B;\">🦷 Tipo:</strong> " + (cita.getProcedimiento() != null ? cita.getProcedimiento().getNombre() : "Por definir") + "</p>";
 
-        String subject = "Confirmación de Cita - OdontoApp";
-        String content = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>"
-                + "<h2 style='color: #28a745;'><i>✓</i> Cita Confirmada</h2>"
-                + "<p>Estimado(a) <strong>" + cita.getPaciente().getNombreCompleto() + "</strong>,</p>"
-                + "<p>Su cita ha sido confirmada exitosamente. A continuación los detalles:</p>"
-                + "<div style='background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;'>"
-                + "<p><strong>📅 Fecha:</strong> " + fechaCita + "</p>"
-                + "<p><strong>🕐 Hora:</strong> " + horaCita + "</p>"
-                + "<p><strong>👨‍⚕️ Odontólogo:</strong> " + cita.getOdontologo().getNombreCompleto() + "</p>"
-                + "<p><strong>🦷 Procedimiento:</strong> " + (cita.getProcedimiento() != null ? cita.getProcedimiento().getNombre() : "Por definir") + "</p>"
-                + "</div>"
-                + "<div style='background-color: #d1ecf1; padding: 15px; border-left: 4px solid #17a2b8; margin: 20px 0;'>"
-                + "<p style='margin: 0; color: #0c5460;'><strong>ℹ️ Importante:</strong></p>"
-                + "<p style='margin: 5px 0 0 0; color: #0c5460;'>Por favor llegue 10 minutos antes de su cita.</p>"
-                + "</div>"
-                + "<p>¿Necesita reprogramar o cancelar? Contáctenos lo antes posible.</p>"
-                + "<hr style='margin: 30px 0; border: none; border-top: 1px solid #ddd;'>"
-                + "<p style='color: #6c757d; font-size: 12px;'>Este es un mensaje automático de OdontoApp.</p>"
-                + "</div>";
+        String html = buildIcon("#DCFCE7", "#16A34A", SVG_CHECK)
+            + buildTitle("¡Cita Confirmada!", "Estimado(a) " + cita.getPaciente().getNombreCompleto() + ", tu reserva ha sido agendada con éxito.", "")
+            + "<div style=\"background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:24px; text-align:left; margin-bottom:24px;\">" + detalles + "</div>"
+            + buildInfoBox("#EFF6FF", "#BFDBFE", "#1E40AF", "#1E40AF", "", "💡 Recuerda presentarte a la clínica con al menos <strong>10 minutos de anticipación</strong>.");
 
-        try {
-            enviarEmail(cita.getPaciente().getEmail(), subject, content);
-            System.out.println("✓ Email de confirmación enviado a: " + cita.getPaciente().getEmail());
-        } catch (MessagingException e) {
-            System.err.println("Error al enviar email de confirmación de cita: " + e.getMessage());
-        }
+        enviarSeguro(cita.getPaciente().getEmail(), subject, buildWrapper(html), "confirmación de cita");
     }
 
-    /**
-     * Envía email de cancelación de cita al paciente
-     */
+    /** Cita cancelada */
     public void enviarCancelacionCita(Cita cita, String motivo) {
-        DateTimeFormatter formatoFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        DateTimeFormatter formatoHora = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM", Locale.forLanguageTag("es-PE"));
+        DateTimeFormatter fmtH = DateTimeFormatter.ofPattern("HH:mm");
 
-        String fechaCita = cita.getFechaHoraInicio().format(formatoFecha);
-        String horaCita = cita.getFechaHoraInicio().format(formatoHora);
+        String subject = "❌ Cita cancelada — OdontoApp";
+        
+        String detalles = "<p style=\"font-size:14px; color:#991B1B; margin:0 0 12px;\"><strong style=\"color:#B91C1C;\">📅 Fecha:</strong> " + cita.getFechaHoraInicio().format(fmt) + "</p>"
+                        + "<p style=\"font-size:14px; color:#991B1B; margin:0 0 12px;\"><strong style=\"color:#B91C1C;\">🕐 Hora:</strong> " + cita.getFechaHoraInicio().format(fmtH) + " hrs</p>"
+                        + "<p style=\"font-size:14px; color:#991B1B; margin:0;\"><strong style=\"color:#B91C1C;\">📝 Motivo:</strong> " + (motivo != null ? motivo : "No especificado") + "</p>";
 
-        String subject = "Cita Cancelada - OdontoApp";
-        String content = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>"
-                + "<h2 style='color: #dc3545;'><i>✗</i> Cita Cancelada</h2>"
-                + "<p>Estimado(a) <strong>" + cita.getPaciente().getNombreCompleto() + "</strong>,</p>"
-                + "<p>Le informamos que su cita ha sido <strong>cancelada</strong>:</p>"
-                + "<div style='background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;'>"
-                + "<p><strong>📅 Fecha:</strong> " + fechaCita + "</p>"
-                + "<p><strong>🕐 Hora:</strong> " + horaCita + "</p>"
-                + "<p><strong>👨‍⚕️ Odontólogo:</strong> " + cita.getOdontologo().getNombreCompleto() + "</p>"
-                + "<p><strong>📝 Motivo:</strong> " + (motivo != null ? motivo : "No especificado") + "</p>"
-                + "</div>"
-                + "<p>Si desea agendar una nueva cita, no dude en contactarnos.</p>"
-                + "<hr style='margin: 30px 0; border: none; border-top: 1px solid #ddd;'>"
-                + "<p style='color: #6c757d; font-size: 12px;'>Este es un mensaje automático de OdontoApp.</p>"
-                + "</div>";
+        String html = buildIcon("#FEE2E2", "#DC2626", SVG_X)
+            + buildTitle("Cita Cancelada", "Estimado(a) " + cita.getPaciente().getNombreCompleto() + ", tu reserva ha sido cancelada.", "")
+            + "<div style=\"background-color:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:24px; text-align:left; margin-bottom:24px;\">" + detalles + "</div>"
+            + buildButton("#DC2626", "Agendar nueva cita", baseUrl + "/login");
 
-        try {
-            enviarEmail(cita.getPaciente().getEmail(), subject, content);
-            System.out.println("✓ Email de cancelación enviado a: " + cita.getPaciente().getEmail());
-        } catch (MessagingException e) {
-            System.err.println("Error al enviar email de cancelación de cita: " + e.getMessage());
-        }
+        enviarSeguro(cita.getPaciente().getEmail(), subject, buildWrapper(html), "cancelación de cita");
     }
 
-    /**
-     * Envía email de reprogramación de cita al paciente
-     */
+    /** Cita reprogramada */
     public void enviarReprogramacionCita(Cita citaAntigua, Cita citaNueva) {
-        DateTimeFormatter formatoFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        DateTimeFormatter formatoHora = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM", Locale.forLanguageTag("es-PE"));
+        DateTimeFormatter fmtH = DateTimeFormatter.ofPattern("HH:mm");
 
-        String fechaAntigua = citaAntigua.getFechaHoraInicio().format(formatoFecha);
-        String horaAntigua = citaAntigua.getFechaHoraInicio().format(formatoHora);
-        String fechaNueva = citaNueva.getFechaHoraInicio().format(formatoFecha);
-        String horaNueva = citaNueva.getFechaHoraInicio().format(formatoHora);
+        String subject = "🔄 Cita reprogramada — OdontoApp";
+        
+        String detalles = "<p style=\"font-size:14px; color:#334155; margin:0 0 12px;\"><strong style=\"color:#64748B;\">📅 Nueva Fecha:</strong> " + citaNueva.getFechaHoraInicio().format(fmt) + "</p>"
+                        + "<p style=\"font-size:14px; color:#334155; margin:0 0 12px;\"><strong style=\"color:#64748B;\">🕐 Nueva Hora:</strong> " + citaNueva.getFechaHoraInicio().format(fmtH) + " hrs</p>"
+                        + "<p style=\"font-size:14px; color:#334155; margin:0;\"><strong style=\"color:#64748B;\">👨‍⚕️ Dentista:</strong> " + citaNueva.getOdontologo().getNombreCompleto() + "</p>";
 
-        String subject = "Cita Reprogramada - OdontoApp";
-        String content = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>"
-                + "<h2 style='color: #fd7e14;'><i>↻</i> Cita Reprogramada</h2>"
-                + "<p>Estimado(a) <strong>" + citaNueva.getPaciente().getNombreCompleto() + "</strong>,</p>"
-                + "<p>Su cita ha sido reprogramada. A continuación los detalles:</p>"
-                + "<div style='background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;'>"
-                + "<p style='margin: 0; text-decoration: line-through; color: #856404;'><strong>Fecha anterior:</strong> " + fechaAntigua + " a las " + horaAntigua + "</p>"
-                + "</div>"
-                + "<div style='background-color: #d4edda; padding: 20px; border-radius: 5px; margin: 20px 0; border: 2px solid #28a745;'>"
-                + "<p style='margin: 0; color: #155724;'><strong>📅 Nueva Fecha:</strong> " + fechaNueva + "</p>"
-                + "<p style='margin: 5px 0 0 0; color: #155724;'><strong>🕐 Nueva Hora:</strong> " + horaNueva + "</p>"
-                + "<p style='margin: 5px 0 0 0; color: #155724;'><strong>👨‍⚕️ Odontólogo:</strong> " + citaNueva.getOdontologo().getNombreCompleto() + "</p>"
-                + "</div>"
-                + "<p>Por favor confirme su asistencia o contáctenos si necesita hacer algún cambio.</p>"
-                + "<hr style='margin: 30px 0; border: none; border-top: 1px solid #ddd;'>"
-                + "<p style='color: #6c757d; font-size: 12px;'>Este es un mensaje automático de OdontoApp.</p>"
-                + "</div>";
+        String html = buildIcon("#FEF3C7", "#D97706", SVG_BELL)
+            + buildTitle("Cita Reprogramada", "Estimado(a) " + citaNueva.getPaciente().getNombreCompleto() + ", tu cita ha sido reprogramada.", "")
+            + "<div style=\"background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:24px; text-align:left; margin-bottom:24px;\">" + detalles + "</div>"
+            + buildInfoBox("#EFF6FF", "#BFDBFE", "#1E40AF", "#1E40AF", "", "Antigua fecha: <strike>" + citaAntigua.getFechaHoraInicio().format(fmt) + " - " + citaAntigua.getFechaHoraInicio().format(fmtH) + "</strike>");
 
-        try {
-            enviarEmail(citaNueva.getPaciente().getEmail(), subject, content);
-            System.out.println("✓ Email de reprogramación enviado a: " + citaNueva.getPaciente().getEmail());
-        } catch (MessagingException e) {
-            System.err.println("Error al enviar email de reprogramación de cita: " + e.getMessage());
-        }
+        enviarSeguro(citaNueva.getPaciente().getEmail(), subject, buildWrapper(html), "reprogramación de cita");
     }
 
-    /**
-     * Envía email recordatorio de cita (24 horas antes)
-     */
+    /** Recordatorio 24 h antes */
     public void enviarRecordatorioCita(Cita cita) {
-        DateTimeFormatter formatoFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        DateTimeFormatter formatoHora = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("EEEE dd 'de' MMMM", Locale.forLanguageTag("es-PE"));
+        DateTimeFormatter fmtH = DateTimeFormatter.ofPattern("HH:mm");
 
-        String fechaCita = cita.getFechaHoraInicio().format(formatoFecha);
-        String horaCita = cita.getFechaHoraInicio().format(formatoHora);
+        String subject = "🔔 Recordatorio: tu cita es mañana — OdontoApp";
+        
+        String detalles = "<p style=\"font-size:14px; color:#334155; margin:0 0 12px;\"><strong style=\"color:#64748B;\">📅 Fecha:</strong> " + cita.getFechaHoraInicio().format(fmt) + "</p>"
+                        + "<p style=\"font-size:14px; color:#334155; margin:0 0 12px;\"><strong style=\"color:#64748B;\">🕐 Hora:</strong> " + cita.getFechaHoraInicio().format(fmtH) + " hrs</p>"
+                        + "<p style=\"font-size:14px; color:#334155; margin:0;\"><strong style=\"color:#64748B;\">👨‍⚕️ Dentista:</strong> " + cita.getOdontologo().getNombreCompleto() + "</p>";
 
-        String subject = "Recordatorio de Cita - Mañana - OdontoApp";
-        String content = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>"
-                + "<h2 style='color: #17a2b8;'><i>🔔</i> Recordatorio de Cita</h2>"
-                + "<p>Estimado(a) <strong>" + cita.getPaciente().getNombreCompleto() + "</strong>,</p>"
-                + "<p>Le recordamos que tiene una cita <strong>mañana</strong>:</p>"
-                + "<div style='background-color: #d1ecf1; padding: 20px; border-radius: 5px; border: 2px solid #17a2b8; margin: 20px 0;'>"
-                + "<p><strong>📅 Fecha:</strong> " + fechaCita + "</p>"
-                + "<p><strong>🕐 Hora:</strong> " + horaCita + "</p>"
-                + "<p><strong>👨‍⚕️ Odontólogo:</strong> " + cita.getOdontologo().getNombreCompleto() + "</p>"
-                + "<p><strong>🦷 Procedimiento:</strong> " + (cita.getProcedimiento() != null ? cita.getProcedimiento().getNombre() : "Por definir") + "</p>"
-                + "</div>"
-                + "<div style='background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;'>"
-                + "<p style='margin: 0; color: #856404;'><strong>⚠️ Importante:</strong></p>"
-                + "<p style='margin: 5px 0 0 0; color: #856404;'>Por favor llegue 10 minutos antes. Si no puede asistir, contáctenos lo antes posible.</p>"
-                + "</div>"
-                + "<hr style='margin: 30px 0; border: none; border-top: 1px solid #ddd;'>"
-                + "<p style='color: #6c757d; font-size: 12px;'>Este es un mensaje automático de OdontoApp.</p>"
-                + "</div>";
+        String html = buildIcon("#CFFAFE", "#0891B2", SVG_BELL)
+            + buildTitle("¡Tu cita es mañana!", "Estimado(a) " + cita.getPaciente().getNombreCompleto() + ", te recordamos que tienes una reserva programada.", "")
+            + "<div style=\"background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:24px; text-align:left; margin-bottom:24px;\">" + detalles + "</div>"
+            + buildInfoBox("#ECFEFF", "#A5F3FC", "#155E75", "#155E75", "", "⏰ Si no puedes asistir, por favor ponte en contacto con nosotros cuanto antes.");
 
+        enviarSeguro(cita.getPaciente().getEmail(), subject, buildWrapper(html), "recordatorio de cita");
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  BUILDERS DEL DISEÑO TAILWIND (EN HTML/CSS INLINE)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    private String buildWrapper(String contentHtml) {
+        return "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><title>OdontoApp</title></head>"
+             + "<body style=\"margin:0;padding:0;background-color:#F8FAFC;font-family:ui-sans-serif, system-ui, -apple-system, sans-serif;\">"
+             + "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background-color:#F8FAFC;padding:40px 16px;\">"
+             + "<tr><td align=\"center\">"
+             + "<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,0.1);border:1px solid #e2e8f0;text-align:center;\">"
+             + "<tr><td style=\"padding:40px 32px;\">"
+             + contentHtml
+             + "</td></tr></table>"
+             + "<p style=\"text-align:center; color:#94A3B8; font-size:12px; margin-top:24px;\">© " + java.time.Year.now().getValue() + " OdontoApp. Todos los derechos reservados.</p>"
+             + "</td></tr></table></body></html>";
+    }
+
+    private String buildIcon(String bgColor, String textColor, String svgContent) {
+        return "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin-bottom:24px;\"><tr><td align=\"center\">"
+             + "<div style=\"background-color:" + bgColor + "; padding:24px; border-radius:9999px; display:inline-block;\">"
+             + "<div style=\"width:64px; height:64px; color:" + textColor + ";\">" + svgContent + "</div>"
+             + "</div></td></tr></table>";
+    }
+
+    private String buildTitle(String title, String p1, String p2) {
+        String html = "<div style=\"margin-bottom:24px;\">"
+             + "<h2 style=\"font-size:24px; font-weight:700; color:#0f172a; margin:0 0 8px 0;\">" + title + "</h2>"
+             + "<p style=\"color:#475569; margin:0 0 8px 0; font-size:16px;\">" + p1 + "</p>";
+        if (p2 != null && !p2.isEmpty()) {
+            html += "<p style=\"color:#64748B; margin:0; font-size:14px;\">" + p2 + "</p>";
+        }
+        html += "</div>";
+        return html;
+    }
+
+    private String buildInfoBox(String bgColor, String borderColor, String titleColor, String textColor, String title, String listHtml) {
+        String html = "<div style=\"background-color:" + bgColor + "; border:1px solid " + borderColor + "; border-radius:8px; padding:16px; text-align:left; margin-bottom:24px;\">";
+        if (title != null && !title.isEmpty()) {
+            html += "<p style=\"font-size:14px; color:" + titleColor + "; font-weight:600; margin:0 0 8px 0;\">" + title + "</p>";
+        }
+        html += "<div style=\"font-size:14px; color:" + textColor + "; margin:0;\">" + listHtml + "</div></div>";
+        return html;
+    }
+
+    private String buildButton(String btnColor, String text, String url) {
+        return "<div style=\"margin-bottom:24px;\">"
+             + "<a href=\"" + url + "\" target=\"_blank\" style=\"display:inline-block; background-color:" + btnColor + "; color:#ffffff; padding:14px 32px; border-radius:8px; font-weight:600; text-decoration:none; font-size:16px;\">" + text + "</a>"
+             + "</div>";
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  CORE — ENVÍO
+    // ══════════════════════════════════════════════════════════════════════════
+
+    private void enviarEmail(String para, String subject, String content) throws MessagingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        helper.setTo(para);
+        helper.setSubject(subject);
+        helper.setText(content, true);
+        helper.setFrom("OdontoApp <system.momentum.noreply@gmail.com>");
+        mailSender.send(message);
+    }
+
+    private void enviarSeguro(String para, String subject, String content, String tipo) {
         try {
-            enviarEmail(cita.getPaciente().getEmail(), subject, content);
-            System.out.println("✓ Email recordatorio enviado a: " + cita.getPaciente().getEmail());
+            enviarEmail(para, subject, content);
+            System.out.println("✓ Email [" + tipo + "] enviado a: " + para);
         } catch (MessagingException e) {
-            System.err.println("Error al enviar email recordatorio de cita: " + e.getMessage());
+            System.err.println("✗ Error al enviar email [" + tipo + "]: " + e.getMessage());
         }
     }
 }

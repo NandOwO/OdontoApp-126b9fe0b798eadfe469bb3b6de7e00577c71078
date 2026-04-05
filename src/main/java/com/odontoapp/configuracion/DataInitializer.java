@@ -2,6 +2,8 @@
 package com.odontoapp.configuracion;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -13,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.odontoapp.entidad.CategoriaProcedimiento;
+import com.odontoapp.entidad.Cita;
 import com.odontoapp.entidad.Insumo;
 import com.odontoapp.entidad.Permiso;
 import com.odontoapp.entidad.Procedimiento;
@@ -20,6 +23,7 @@ import com.odontoapp.entidad.Rol;
 import com.odontoapp.entidad.TipoDocumento;
 import com.odontoapp.entidad.Usuario;
 import com.odontoapp.repositorio.CategoriaProcedimientoRepository;
+import com.odontoapp.repositorio.CitaRepository;
 import com.odontoapp.repositorio.InsumoRepository;
 import com.odontoapp.repositorio.PermisoRepository;
 import com.odontoapp.repositorio.ProcedimientoRepository;
@@ -42,6 +46,7 @@ import com.odontoapp.repositorio.EstadoPagoRepository;
 import com.odontoapp.repositorio.MetodoPagoRepository;
 import com.odontoapp.entidad.ProcedimientoInsumo;
 import com.odontoapp.repositorio.ProcedimientoInsumoRepository;
+import jakarta.transaction.Transactional;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -64,6 +69,7 @@ public class DataInitializer implements CommandLineRunner {
         private final MetodoPagoRepository metodoPagoRepository;
         private final ProcedimientoInsumoRepository procedimientoInsumoRepository;
         private final PacienteRepository pacienteRepository;
+        private final CitaRepository citaRepository;
 
         public DataInitializer(UsuarioRepository usuarioRepository, RolRepository rolRepository,
                         PasswordEncoder passwordEncoder, PermisoRepository permisoRepository,
@@ -79,7 +85,8 @@ public class DataInitializer implements CommandLineRunner {
                         EstadoPagoRepository estadoPagoRepository,
                         MetodoPagoRepository metodoPagoRepository,
                         ProcedimientoInsumoRepository procedimientoInsumoRepository,
-                        PacienteRepository pacienteRepository) {
+                        PacienteRepository pacienteRepository,
+                        CitaRepository citaRepository) {
                 this.usuarioRepository = usuarioRepository;
                 this.rolRepository = rolRepository;
                 this.passwordEncoder = passwordEncoder;
@@ -97,9 +104,11 @@ public class DataInitializer implements CommandLineRunner {
                 this.metodoPagoRepository = metodoPagoRepository;
                 this.procedimientoInsumoRepository = procedimientoInsumoRepository;
                 this.pacienteRepository = pacienteRepository;
+                this.citaRepository = citaRepository;
         }
 
         @Override
+        @Transactional
         public void run(String... args) throws Exception {
 
                 // ... (Creación de Tipos de Documento - sin cambios) ...
@@ -734,6 +743,7 @@ public class DataInitializer implements CommandLineRunner {
                 }
                 crearPacientesParaUsuariosConRolPaciente();
                 limpiarPermisosRolPaciente();
+                crearDatosDePrueba();
 
         }
 
@@ -770,7 +780,11 @@ public class DataInitializer implements CommandLineRunner {
                                 Paciente nuevoPaciente = new Paciente();
                                 nuevoPaciente.setUsuario(usuario);
                                 nuevoPaciente.setNombreCompleto(usuario.getNombreCompleto());
-                                nuevoPaciente.setNumeroDocumento(usuario.getNumeroDocumento());
+                                String numDoc = usuario.getNumeroDocumento();
+                                if (numDoc == null || numDoc.trim().isEmpty()) {
+                                    numDoc = "SYS-" + usuario.getId().toString().substring(0, 8).toUpperCase();
+                                }
+                                nuevoPaciente.setNumeroDocumento(numDoc);
                                 nuevoPaciente.setTipoDocumento(usuario.getTipoDocumento());
                                 nuevoPaciente.setEmail(usuario.getEmail());
                                 nuevoPaciente.setTelefono(usuario.getTelefono());
@@ -846,6 +860,238 @@ public class DataInitializer implements CommandLineRunner {
                 System.out.println("   ✅ Permisos actualizados: " + permisosCorrectos.size());
                 System.out.println("   - Permisos eliminados: " + (permisosAnteriores - permisosCorrectos.size()));
         }
+
+        // =========================================================
+        // === DATOS DE PRUEBA PARA TESTEO LOCAL               ===
+        // =========================================================
+        /**
+         * Crea usuarios y citas de prueba para facilitar el testeo local.
+         *
+         * IDEMPOTENCIA: Verifica por ROL (no por email).
+         * Si ya existe al menos 1 usuario con el rol solicitado → no crea nada.
+         * Así, aunque cambies el email del usuario en la app, al reiniciar
+         * no se crearán duplicados.
+         */
+        private void crearDatosDePrueba() {
+                System.out.println(">>> [SEED] Iniciando creación de datos de prueba...");
+
+                TipoDocumento dni = tipoDocumentoRepository.findByCodigo("DNI").orElse(null);
+                if (dni == null) {
+                        System.out.println("   [SEED] TipoDocumento DNI no encontrado, omitiendo datos de prueba.");
+                        return;
+                }
+
+                // --- Odontólogo de prueba ---
+                // Guardamos referencia al odontólogo para usarlo en las citas
+                Usuario odontologo = null;
+                List<Usuario> odontologos = usuarioRepository.findByRolesNombre("ODONTOLOGO");
+                if (odontologos.isEmpty()) {
+                        Rol rolOdontologo = rolRepository.findByNombre("ODONTOLOGO").orElse(null);
+                        if (rolOdontologo != null) {
+                                Usuario nuevo = new Usuario();
+                                nuevo.setNombreCompleto("Dr. Carlos Mendoza");
+                                nuevo.setEmail("odontologo@odontoapp.com");
+                                nuevo.setPassword(passwordEncoder.encode("odonto123"));
+                                nuevo.setRoles(Set.of(rolOdontologo));
+                                nuevo.setEstaActivo(true);
+                                nuevo.setTipoDocumento(dni);
+                                nuevo.setNumeroDocumento("45678901");
+                                nuevo.setTelefono("987654321");
+                                nuevo.setDireccion("Av. Dental 123, Lima");
+                                nuevo.setFechaNacimiento(LocalDate.of(1985, 6, 15));
+                                nuevo.setFechaContratacion(LocalDate.of(2020, 1, 10));
+                                nuevo.setCreadoPor("SISTEMA");
+                                nuevo.setModificadoPor("SISTEMA");
+                                odontologo = usuarioRepository.save(nuevo);
+                                System.out.println("   [SEED] ✅ Odontólogo creado: " + odontologo.getEmail() + " / odonto123");
+                        }
+                } else {
+                        odontologo = odontologos.get(0);
+                        System.out.println("   [SEED] ⏭  Odontólogo ya existe (" + odontologo.getEmail() + "), omitiendo.");
+                }
+
+                // --- Recepcionista de prueba ---
+                List<Usuario> recepcionistas = usuarioRepository.findByRolesNombre("RECEPCIONISTA");
+                if (recepcionistas.isEmpty()) {
+                        Rol rolRecep = rolRepository.findByNombre("RECEPCIONISTA").orElse(null);
+                        if (rolRecep != null) {
+                                Usuario nuevo = new Usuario();
+                                nuevo.setNombreCompleto("María García");
+                                nuevo.setEmail("recepcion@odontoapp.com");
+                                nuevo.setPassword(passwordEncoder.encode("recep123"));
+                                nuevo.setRoles(Set.of(rolRecep));
+                                nuevo.setEstaActivo(true);
+                                nuevo.setTipoDocumento(dni);
+                                nuevo.setNumeroDocumento("32165498");
+                                nuevo.setTelefono("912345678");
+                                nuevo.setDireccion("Jr. Recepción 456, Lima");
+                                nuevo.setFechaNacimiento(LocalDate.of(1992, 3, 22));
+                                nuevo.setFechaContratacion(LocalDate.of(2021, 5, 1));
+                                nuevo.setCreadoPor("SISTEMA");
+                                nuevo.setModificadoPor("SISTEMA");
+                                usuarioRepository.save(nuevo);
+                                System.out.println("   [SEED] ✅ Recepcionista creada: recepcion@odontoapp.com / recep123");
+                        }
+                } else {
+                        System.out.println("   [SEED] ⏭  Recepcionista ya existe, omitiendo.");
+                }
+
+                // --- Almacén de prueba ---
+                List<Usuario> almacenistas = usuarioRepository.findByRolesNombre("ALMACEN");
+                if (almacenistas.isEmpty()) {
+                        Rol rolAlmacen = rolRepository.findByNombre("ALMACEN").orElse(null);
+                        if (rolAlmacen != null) {
+                                Usuario nuevo = new Usuario();
+                                nuevo.setNombreCompleto("Luis Torres");
+                                nuevo.setEmail("almacen@odontoapp.com");
+                                nuevo.setPassword(passwordEncoder.encode("almacen123"));
+                                nuevo.setRoles(Set.of(rolAlmacen));
+                                nuevo.setEstaActivo(true);
+                                nuevo.setTipoDocumento(dni);
+                                nuevo.setNumeroDocumento("78912345");
+                                nuevo.setTelefono("934567890");
+                                nuevo.setDireccion("Calle Almacén 789, Lima");
+                                nuevo.setFechaNacimiento(LocalDate.of(1990, 11, 5));
+                                nuevo.setFechaContratacion(LocalDate.of(2022, 3, 15));
+                                nuevo.setCreadoPor("SISTEMA");
+                                nuevo.setModificadoPor("SISTEMA");
+                                usuarioRepository.save(nuevo);
+                                System.out.println("   [SEED] ✅ Almacén creado: almacen@odontoapp.com / almacen123");
+                        }
+                } else {
+                        System.out.println("   [SEED] ⏭  Almacén ya existe, omitiendo.");
+                }
+
+                // --- Paciente de prueba ---
+                // Verificamos por rol PACIENTE; si no hay ninguno, creamos usuario + registro paciente
+                Usuario usuarioPaciente = null;
+                List<Usuario> pacientesUsuario = usuarioRepository.findByRolesNombre("PACIENTE");
+                if (pacientesUsuario.isEmpty()) {
+                        Rol rolPaciente = rolRepository.findByNombre("PACIENTE").orElse(null);
+                        if (rolPaciente != null) {
+                                Usuario nuevo = new Usuario();
+                                nuevo.setNombreCompleto("Ana López");
+                                nuevo.setEmail("paciente@odontoapp.com");
+                                nuevo.setPassword(passwordEncoder.encode("paciente123"));
+                                nuevo.setRoles(Set.of(rolPaciente));
+                                nuevo.setEstaActivo(true);
+                                nuevo.setTipoDocumento(dni);
+                                nuevo.setNumeroDocumento("12345678");
+                                nuevo.setTelefono("956789012");
+                                nuevo.setDireccion("Av. Los Pacientes 100, Lima");
+                                nuevo.setFechaNacimiento(LocalDate.of(1995, 8, 30));
+                                nuevo.setCreadoPor("SISTEMA");
+                                nuevo.setModificadoPor("SISTEMA");
+                                usuarioPaciente = usuarioRepository.save(nuevo);
+
+                                // Crear registro en tabla pacientes
+                                Paciente paciente = new Paciente();
+                                paciente.setUsuario(usuarioPaciente);
+                                paciente.setNombreCompleto(nuevo.getNombreCompleto());
+                                paciente.setNumeroDocumento(nuevo.getNumeroDocumento());
+                                paciente.setTipoDocumento(dni);
+                                paciente.setEmail(nuevo.getEmail());
+                                paciente.setTelefono(nuevo.getTelefono());
+                                paciente.setDireccion(nuevo.getDireccion());
+                                paciente.setFechaNacimiento(nuevo.getFechaNacimiento());
+                                paciente.setAlergias("Ninguna conocida");
+                                paciente.setAntecedentesMedicos("Sin antecedentes relevantes");
+                                paciente.setTratamientosActuales("Ninguno");
+                                paciente.setEliminado(false);
+                                paciente.setCreadoPor("SISTEMA");
+                                paciente.setModificadoPor("SISTEMA");
+                                pacienteRepository.save(paciente);
+
+                                System.out.println("   [SEED] ✅ Paciente creado: paciente@odontoapp.com / paciente123");
+                        }
+                } else {
+                        usuarioPaciente = pacientesUsuario.get(0);
+                        System.out.println("   [SEED] ⏭  Paciente ya existe (" + usuarioPaciente.getEmail() + "), omitiendo.");
+                }
+
+                // --- Citas de prueba ---
+                // Solo las creamos si no hay ninguna cita registrada en el sistema
+                // y si tenemos tanto odontólogo como paciente disponibles.
+                if (odontologo != null && usuarioPaciente != null && citaRepository.count() == 0) {
+                        crearCitasDePrueba(odontologo, usuarioPaciente);
+                } else if (citaRepository.count() > 0) {
+                        System.out.println("   [SEED] ⏭  Ya existen citas en el sistema, omitiendo citas de prueba.");
+                }
+
+                System.out.println(">>> [SEED] Datos de prueba listos.");
+        }
+
+        /**
+         * Crea 3 citas de prueba con distintos estados para poder navegar las vistas.
+         * - 1 cita PENDIENTE (mañana)
+         * - 1 cita CONFIRMADA (pasado mañana)
+         * - 1 cita ASISTIO    (la semana pasada)
+         */
+        private void crearCitasDePrueba(Usuario odontologo, Usuario paciente) {
+                Procedimiento consulta = procedimientoRepository.findByCodigo("CON-001").orElse(null);
+                EstadoCita estadoPendiente  = estadoCitaRepository.findByNombre("PENDIENTE").orElse(null);
+                EstadoCita estadoConfirmada = estadoCitaRepository.findByNombre("CONFIRMADA").orElse(null);
+                EstadoCita estadoAsistio    = estadoCitaRepository.findByNombre("ASISTIO").orElse(null);
+
+                if (estadoPendiente == null || estadoConfirmada == null || estadoAsistio == null) {
+                        System.out.println("   [SEED] Estados de cita no encontrados, omitiendo citas de prueba.");
+                        return;
+                }
+
+                LocalDateTime ahora = LocalDateTime.now();
+
+                // Cita 1: PENDIENTE (mañana 10:00 - 10:30)
+                Cita cita1 = new Cita();
+                cita1.setPaciente(paciente);
+                cita1.setOdontologo(odontologo);
+                cita1.setProcedimiento(consulta);
+                cita1.setFechaHoraInicio(ahora.plusDays(1).withHour(10).withMinute(0).withSecond(0).withNano(0));
+                cita1.setFechaHoraFin(ahora.plusDays(1).withHour(10).withMinute(30).withSecond(0).withNano(0));
+                cita1.setDuracionEstimadaMinutos(30);
+                cita1.setEstadoCita(estadoPendiente);
+                cita1.setMotivoConsulta("Dolor en muela del juicio");
+                cita1.setNotasInternas("Paciente de prueba - cita PENDIENTE");
+                cita1.setCreadoPor("SISTEMA");
+                cita1.setModificadoPor("SISTEMA");
+                citaRepository.save(cita1);
+                System.out.println("   [SEED] ✅ Cita PENDIENTE creada (mañana 10:00)");
+
+                // Cita 2: CONFIRMADA (pasado mañana 15:00 - 15:30)
+                Cita cita2 = new Cita();
+                cita2.setPaciente(paciente);
+                cita2.setOdontologo(odontologo);
+                cita2.setProcedimiento(consulta);
+                cita2.setFechaHoraInicio(ahora.plusDays(2).withHour(15).withMinute(0).withSecond(0).withNano(0));
+                cita2.setFechaHoraFin(ahora.plusDays(2).withHour(15).withMinute(30).withSecond(0).withNano(0));
+                cita2.setDuracionEstimadaMinutos(30);
+                cita2.setEstadoCita(estadoConfirmada);
+                cita2.setMotivoConsulta("Control de tratamiento");
+                cita2.setNotasInternas("Paciente de prueba - cita CONFIRMADA");
+                cita2.setCreadoPor("SISTEMA");
+                cita2.setModificadoPor("SISTEMA");
+                citaRepository.save(cita2);
+                System.out.println("   [SEED] ✅ Cita CONFIRMADA creada (pasado mañana 15:00)");
+
+                // Cita 3: ASISTIO (semana pasada 09:00 - 09:30)
+                Cita cita3 = new Cita();
+                cita3.setPaciente(paciente);
+                cita3.setOdontologo(odontologo);
+                cita3.setProcedimiento(consulta);
+                cita3.setFechaHoraInicio(ahora.minusDays(7).withHour(9).withMinute(0).withSecond(0).withNano(0));
+                cita3.setFechaHoraFin(ahora.minusDays(7).withHour(9).withMinute(30).withSecond(0).withNano(0));
+                cita3.setDuracionEstimadaMinutos(30);
+                cita3.setEstadoCita(estadoAsistio);
+                cita3.setMotivoConsulta("Limpieza dental de rutina");
+                cita3.setNotasInternas("Paciente de prueba - cita ASISTIO");
+                cita3.setCreadoPor("SISTEMA");
+                cita3.setModificadoPor("SISTEMA");
+                citaRepository.save(cita3);
+                System.out.println("   [SEED] ✅ Cita ASISTIO creada (semana pasada 09:00)");
+        }
+
+        // =========================================================
+        // === FIN DATOS DE PRUEBA                              ===
+        // =========================================================
 
         // ... (Métodos helper - sin cambios) ...
         private TipoDocumento crearTipoDocumento(String nombre, String codigo, boolean esNacional) {

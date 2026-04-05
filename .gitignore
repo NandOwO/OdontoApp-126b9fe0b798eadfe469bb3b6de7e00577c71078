@@ -44,3 +44,7 @@ application.properties
 .env
 .env.local
 .env.*.local
+
+# Entorno local e ignorados
+.env
+
